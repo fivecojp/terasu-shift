@@ -236,6 +236,98 @@ export function computeDeadlineYmd(
   return formatYmd(d)
 }
 
+/** 締切日が「今日より前」なら true（当日はまだ提出可とみなす） */
+export function isDeadlineExpiredVsToday(
+  deadlineYmd: string,
+  todayYmd: string
+): boolean {
+  return deadlineYmd < todayYmd
+}
+
+export type PeriodDeadlineInfo = {
+  sel: PeriodSel
+  periodFirstYmd: string
+  deadlineYmd: string
+}
+
+/** 対象月に存在する提出単位ごとの締切（computeDeadlineYmd の結果を利用） */
+export function listPeriodsWithDeadlines(
+  targetMonthFirst: string,
+  settings: ShiftSetting
+): PeriodDeadlineInfo[] {
+  const ym = parseYmd(targetMonthFirst)
+  const y = ym.getFullYear()
+  const m = ym.getMonth()
+  const wk = weekStartsOnFromSettings(settings.week_start_day)
+  const weeks = listWeekSlicesInMonth(y, m, wk)
+  const biweeks = pairBiweeklySlices(weeks)
+
+  const out: PeriodDeadlineInfo[] = []
+
+  const pushSel = (sel: PeriodSel): void => {
+    const grid = resolveGridForSelection(targetMonthFirst, settings, sel)
+    const periodFirst = grid.workDates[0]
+    if (!periodFirst) return
+    out.push({
+      sel,
+      periodFirstYmd: periodFirst,
+      deadlineYmd: computeDeadlineYmd(settings, periodFirst),
+    })
+  }
+
+  switch (settings.shift_cycle) {
+    case 'monthly':
+      pushSel({ kind: 'monthly' })
+      break
+    case 'semimonthly':
+      pushSel({ kind: 'semimonthly', phase: 'first_half' })
+      pushSel({ kind: 'semimonthly', phase: 'second_half' })
+      break
+    case 'weekly':
+      for (const w of weeks) {
+        pushSel({ kind: 'weekly', weekId: w.id })
+      }
+      break
+    case 'biweekly':
+      for (const bw of biweeks) {
+        pushSel({ kind: 'biweekly', biweekId: bw.id })
+      }
+      break
+    default:
+      pushSel({ kind: 'monthly' })
+      break
+  }
+
+  return out
+}
+
+export function periodSelEquals(a: PeriodSel, b: PeriodSel): boolean {
+  if (a.kind !== b.kind) return false
+  switch (a.kind) {
+    case 'monthly':
+      return b.kind === 'monthly'
+    case 'semimonthly':
+      return b.kind === 'semimonthly' && a.phase === b.phase
+    case 'weekly':
+      return b.kind === 'weekly' && a.weekId === b.weekId
+    case 'biweekly':
+      return b.kind === 'biweekly' && a.biweekId === b.biweekId
+    default:
+      return false
+  }
+}
+
+/** その月中に締切がまだ valid な提出単位が1つでもあるか */
+export function monthHasAnyOpenPeriod(
+  targetMonthFirst: string,
+  settings: ShiftSetting,
+  todayYmd: string
+): boolean {
+  return listPeriodsWithDeadlines(targetMonthFirst, settings).some(
+    (p) => !isDeadlineExpiredVsToday(p.deadlineYmd, todayYmd)
+  )
+}
+
 export function defaultTargetMonth(): string {
   const n = new Date()
   return formatYmd(new Date(n.getFullYear(), n.getMonth(), 1))

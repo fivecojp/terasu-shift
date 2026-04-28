@@ -7,7 +7,22 @@ import {
   type UpsertShiftRowPayload,
   upsertShiftRequests,
 } from '@/app/(shift)/request/actions'
-import { computeDeadlineYmd, listHalfHourOptions, listWeekSlicesInMonth, pairBiweeklySlices, parseYmd, resolveGridForSelection, type PeriodSel, weekStartsOnFromSettings, ymParamToTargetFirst } from '@/lib/shift-request-periods'
+import {
+  computeDeadlineYmd,
+  isDeadlineExpiredVsToday,
+  listHalfHourOptions,
+  listPeriodsWithDeadlines,
+  listWeekSlicesInMonth,
+  monthHasAnyOpenPeriod,
+  pairBiweeklySlices,
+  parseYmd,
+  periodSelEquals,
+  resolveGridForSelection,
+  type PeriodDeadlineInfo,
+  type PeriodSel,
+  weekStartsOnFromSettings,
+  ymParamToTargetFirst,
+} from '@/lib/shift-request-periods'
 import type { SessionUser } from '@/lib/auth'
 import type { ShiftPattern, ShiftRequest, ShiftSetting } from '@/types/database'
 import { RequestDateRow, type RowVals, type Tone } from '@/app/(shift)/request/RequestDateRow'
@@ -92,6 +107,16 @@ function requestToRow(r: ShiftRequest, half: number[]): RowVals {
   }
 }
 
+function deadlinePassedForSel(
+  infos: PeriodDeadlineInfo[],
+  sel: PeriodSel,
+  todayStr: string
+): boolean {
+  const meta = infos.find((p) => periodSelEquals(p.sel, sel))
+  if (!meta) return false
+  return isDeadlineExpiredVsToday(meta.deadlineYmd, todayStr)
+}
+
 function rowToPayload(rv: RowVals): UpsertShiftRowPayload {
   if (rv.mode === 'pattern') {
     if (!rv.patternId) {
@@ -142,6 +167,29 @@ export function RequestShiftClient(props: Props) {
   const router = useRouter()
   const ym = ymParamToTargetFirst(ymQuery) ?? targetMonthFirst.slice(0, 7)
 
+  const todayStr = new Date().toLocaleDateString('sv-SE')
+
+  const ymNow = new Date()
+  const ym0 = `${ymNow.getFullYear()}-${String(ymNow.getMonth() + 1).padStart(2, '0')}`
+  const d1 = new Date(ymNow.getFullYear(), ymNow.getMonth() + 1, 1)
+  const ym1 = `${d1.getFullYear()}-${String(d1.getMonth() + 1).padStart(2, '0')}`
+
+  const targetMonthFirstYm0 = `${ym0}-01`
+  const targetMonthFirstYm1 = `${ym1}-01`
+
+  const month0HasOpen = monthHasAnyOpenPeriod(
+    targetMonthFirstYm0,
+    settings,
+    todayStr
+  )
+  const month1HasOpen = monthHasAnyOpenPeriod(
+    targetMonthFirstYm1,
+    settings,
+    todayStr
+  )
+
+  const noSubmitPeriodAvailable = !month0HasOpen && !month1HasOpen
+
   const holidaySet = useMemo(
     () => new Set(holidays.map((h) => h.holiday_date)),
     [holidays]
@@ -169,8 +217,29 @@ export function RequestShiftClient(props: Props) {
   )
 
   useEffect(() => {
-    setPeriodSel(defaultPeriodSel(settings, weeks, biweeks))
-  }, [biweeks, settings.shift_cycle, settings.week_start_day, weeks, ym])
+    const periods = listPeriodsWithDeadlines(targetMonthFirst, settings)
+    const open = periods.filter(
+      (p) => !isDeadlineExpiredVsToday(p.deadlineYmd, todayStr)
+    )
+    const def = defaultPeriodSel(settings, weeks, biweeks)
+    const defMeta = periods.find((p) => periodSelEquals(p.sel, def))
+    const defOk =
+      !!defMeta && !isDeadlineExpiredVsToday(defMeta.deadlineYmd, todayStr)
+
+    setPeriodSel((prev) => {
+      const prevOk = open.find((p) => periodSelEquals(p.sel, prev))
+      if (prevOk) return prev
+      if (defOk) return def
+      if (open[0]) return open[0].sel
+      return def
+    })
+  }, [
+    biweeks,
+    settings,
+    targetMonthFirst,
+    todayStr,
+    weeks,
+  ])
 
   const grid = useMemo(
     () => resolveGridForSelection(targetMonthFirst, settings, periodSel),
@@ -184,6 +253,29 @@ export function RequestShiftClient(props: Props) {
     () => computeDeadlineYmd(settings, periodFirst),
     [periodFirst, settings]
   )
+
+  const periodDeadlineInfos = useMemo(
+    () => listPeriodsWithDeadlines(targetMonthFirst, settings),
+    [settings, targetMonthFirst]
+  )
+
+  const currentPeriodDeadlinePassed = deadlinePassedForSel(
+    periodDeadlineInfos,
+    periodSel,
+    todayStr
+  )
+
+  const allPeriodsExpiredThisMonth = useMemo(
+    () =>
+      periodDeadlineInfos.length > 0 &&
+      periodDeadlineInfos.every((p) =>
+        isDeadlineExpiredVsToday(p.deadlineYmd, todayStr)
+      ),
+    [periodDeadlineInfos, todayStr]
+  )
+
+  const formLocked =
+    currentPeriodDeadlinePassed || allPeriodsExpiredThisMonth
 
   const savedForPeriod = useMemo(() => {
     return requests.filter(
@@ -255,11 +347,6 @@ export function RequestShiftClient(props: Props) {
     router.refresh()
   }
 
-  const ymNow = new Date()
-  const ym0 = `${ymNow.getFullYear()}-${String(ymNow.getMonth() + 1).padStart(2, '0')}`
-  const d1 = new Date(ymNow.getFullYear(), ymNow.getMonth() + 1, 1)
-  const ym1 = `${d1.getFullYear()}-${String(d1.getMonth() + 1).padStart(2, '0')}`
-
   const monthSummaryLabel = useMemo(
     () =>
       new Intl.DateTimeFormat('ja-JP', {
@@ -296,10 +383,12 @@ export function RequestShiftClient(props: Props) {
 
   const [headerExpanded, setHeaderExpanded] = useState(false)
 
-  const monthToggleActive =
-    'min-h-10 flex-none rounded-lg px-4 py-2 text-sm font-semibold bg-slate-700 text-white'
-  const monthToggleInactive =
-    'min-h-10 flex-none rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50'
+  const halfBtnActive =
+    'min-h-10 flex-none rounded-lg px-4 py-2 text-sm font-semibold bg-slate-700 text-white ring-2 ring-slate-400 ring-offset-1'
+  const halfBtnInactive =
+    'min-h-10 flex-none rounded-lg border-2 border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-500 hover:border-zinc-400'
+  const halfBtnExpired =
+    'min-h-10 flex-none cursor-not-allowed rounded-lg border-2 border-zinc-200 bg-zinc-100 px-4 py-2 text-sm text-zinc-300 opacity-50'
 
   const periodControl =
     settings.shift_cycle === 'monthly' ? (
@@ -313,12 +402,26 @@ export function RequestShiftClient(props: Props) {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={!!isSubmitted && !editing}
-            className={`disabled:opacity-50 ${
-              periodSel.kind === 'semimonthly' && periodSel.phase === 'first_half'
-                ? monthToggleActive
-                : monthToggleInactive
-            }`}
+            disabled={
+              (!!isSubmitted && !editing) ||
+              deadlinePassedForSel(
+                periodDeadlineInfos,
+                { kind: 'semimonthly', phase: 'first_half' },
+                todayStr
+              )
+            }
+            className={
+              deadlinePassedForSel(
+                periodDeadlineInfos,
+                { kind: 'semimonthly', phase: 'first_half' },
+                todayStr
+              )
+                ? halfBtnExpired
+                : periodSel.kind === 'semimonthly' &&
+                    periodSel.phase === 'first_half'
+                  ? halfBtnActive
+                  : halfBtnInactive
+            }
             onClick={() =>
               setPeriodSel({ kind: 'semimonthly', phase: 'first_half' })
             }
@@ -327,12 +430,26 @@ export function RequestShiftClient(props: Props) {
           </button>
           <button
             type="button"
-            disabled={!!isSubmitted && !editing}
-            className={`disabled:opacity-50 ${
-              periodSel.kind === 'semimonthly' && periodSel.phase === 'second_half'
-                ? monthToggleActive
-                : monthToggleInactive
-            }`}
+            disabled={
+              (!!isSubmitted && !editing) ||
+              deadlinePassedForSel(
+                periodDeadlineInfos,
+                { kind: 'semimonthly', phase: 'second_half' },
+                todayStr
+              )
+            }
+            className={
+              deadlinePassedForSel(
+                periodDeadlineInfos,
+                { kind: 'semimonthly', phase: 'second_half' },
+                todayStr
+              )
+                ? halfBtnExpired
+                : periodSel.kind === 'semimonthly' &&
+                    periodSel.phase === 'second_half'
+                  ? halfBtnActive
+                  : halfBtnInactive
+            }
             onClick={() =>
               setPeriodSel({ kind: 'semimonthly', phase: 'second_half' })
             }
@@ -348,7 +465,7 @@ export function RequestShiftClient(props: Props) {
           <p className="text-sm text-amber-800">この月に表示できる週がありません。</p>
         ) : (
           <select
-            className="min-h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            className="min-h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
             value={
               periodSel.kind === 'weekly'
                 ? periodSel.weekId
@@ -359,11 +476,19 @@ export function RequestShiftClient(props: Props) {
               setPeriodSel({ kind: 'weekly', weekId: e.target.value })
             }
           >
-            {weeks.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.label}
-              </option>
-            ))}
+            {weeks.map((w) => {
+              const passed = deadlinePassedForSel(
+                periodDeadlineInfos,
+                { kind: 'weekly', weekId: w.id },
+                todayStr
+              )
+              return (
+                <option key={w.id} value={w.id} disabled={passed}>
+                  {w.label}
+                  {passed ? '（締切済）' : ''}
+                </option>
+              )
+            })}
           </select>
         )}
       </div>
@@ -374,7 +499,7 @@ export function RequestShiftClient(props: Props) {
           <p className="text-sm text-amber-800">この月に表示できる2週ブロックがありません。</p>
         ) : (
           <select
-            className="min-h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
+            className="min-h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
             value={
               periodSel.kind === 'biweekly'
                 ? periodSel.biweekId
@@ -385,15 +510,36 @@ export function RequestShiftClient(props: Props) {
               setPeriodSel({ kind: 'biweekly', biweekId: e.target.value })
             }
           >
-            {biweeks.map((bw) => (
-              <option key={bw.id} value={bw.id}>
-                {bw.label}
-              </option>
-            ))}
+            {biweeks.map((bw) => {
+              const passed = deadlinePassedForSel(
+                periodDeadlineInfos,
+                { kind: 'biweekly', biweekId: bw.id },
+                todayStr
+              )
+              return (
+                <option key={bw.id} value={bw.id} disabled={passed}>
+                  {bw.label}
+                  {passed ? '（締切済）' : ''}
+                </option>
+              )
+            })}
           </select>
         )}
       </div>
     ) : null
+
+  const MONTH_NAV_ACTIVE =
+    'min-w-[5rem] rounded-lg px-5 py-2.5 text-sm font-semibold bg-slate-700 text-white ring-2 ring-slate-400 ring-offset-1'
+  const MONTH_NAV_INACTIVE =
+    'min-w-[5rem] rounded-lg px-5 py-2.5 text-sm bg-white border-2 border-zinc-300 text-zinc-500 hover:border-zinc-400'
+  const MONTH_NAV_EXPIRED =
+    'min-w-[5rem] rounded-lg px-5 py-2.5 text-sm bg-zinc-100 border-2 border-zinc-200 text-zinc-300 cursor-not-allowed'
+
+  function monthNavClass(active: boolean, expired: boolean): string {
+    if (expired) return MONTH_NAV_EXPIRED
+    if (active) return MONTH_NAV_ACTIVE
+    return MONTH_NAV_INACTIVE
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50">
@@ -462,18 +608,26 @@ export function RequestShiftClient(props: Props) {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Link
-                className={ym === ym0 ? monthToggleActive : monthToggleInactive}
-                href={`/request?ym=${ym0}`}
+              <button
+                type="button"
+                disabled={!month0HasOpen}
+                onClick={() => {
+                  if (month0HasOpen) router.push(`/request?ym=${ym0}`)
+                }}
+                className={monthNavClass(ym === ym0, !month0HasOpen)}
               >
                 今月
-              </Link>
-              <Link
-                className={ym === ym1 ? monthToggleActive : monthToggleInactive}
-                href={`/request?ym=${ym1}`}
+              </button>
+              <button
+                type="button"
+                disabled={!month1HasOpen}
+                onClick={() => {
+                  if (month1HasOpen) router.push(`/request?ym=${ym1}`)
+                }}
+                className={monthNavClass(ym === ym1, !month1HasOpen)}
               >
                 来月
-              </Link>
+              </button>
             </div>
 
             <div>{periodControl}</div>
@@ -494,6 +648,28 @@ export function RequestShiftClient(props: Props) {
           希望シフト
         </h2>
 
+        {noSubmitPeriodAvailable ? (
+          <div className="mx-4 my-6 rounded-lg border border-zinc-200 bg-zinc-100 p-4 text-center">
+            <p className="text-sm font-semibold text-zinc-600">
+              現在提出できる期間がありません
+            </p>
+            <p className="mt-1 text-xs text-zinc-400">
+              次の締切をお待ちください
+            </p>
+          </div>
+        ) : null}
+
+        {!noSubmitPeriodAvailable && allPeriodsExpiredThisMonth ? (
+          <div className="mx-0 my-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-center">
+            <p className="text-sm font-medium text-amber-900">
+              この月では提出できる期間がありません
+            </p>
+            <p className="mt-1 text-xs text-amber-700">
+              今月・来月を切り替えてください
+            </p>
+          </div>
+        ) : null}
+
         {isSubmitted ? (
           <div className="my-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
             <p className="text-sm font-semibold text-emerald-700">提出済み</p>
@@ -512,52 +688,62 @@ export function RequestShiftClient(props: Props) {
           </div>
         ) : null}
 
-        <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
-          <div className="flex gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
-            <span className="w-14 shrink-0">日付</span>
-            <span className="min-w-0 flex-1">希望</span>
+        {!noSubmitPeriodAvailable && !allPeriodsExpiredThisMonth ? (
+          <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+            <div className="flex gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <span className="w-14 shrink-0">日付</span>
+              <span className="min-w-0 flex-1">希望</span>
+            </div>
+
+            <div className="max-h-[calc(100vh-18rem)] overflow-y-auto overscroll-y-contain pb-28">
+              {workDates.map((d) => {
+                const dow = parseYmd(d).getDay()
+                const holiday = holidaySet.has(d)
+                const saturday = dow === 6
+                const sunOrHol = dow === 0 || holiday
+
+                let tone: Tone = 'plain'
+                if (saturday) tone = 'sat'
+                else if (sunOrHol) tone = 'sunh'
+
+                return (
+                  <RequestDateRow
+                    key={`${grid.period_type}-${periodFirst}-${d}`}
+                    dateYmd={d}
+                    labelText={formatShortDateLabel(d)}
+                    tone={tone}
+                    patterns={patterns}
+                    halfOpts={halfOpts}
+                    disabled={
+                      formLocked || (!!isSubmitted && !editing)
+                    }
+                    row={rows[d] ?? rowDefault()}
+                    onChangeMode={(nv) =>
+                      setRows((prev) => ({ ...prev, [d]: nv }))
+                    }
+                  />
+                )
+              })}
+            </div>
           </div>
+        ) : null}
 
-          <div className="max-h-[calc(100vh-18rem)] overflow-y-auto overscroll-y-contain pb-28">
-            {workDates.map((d) => {
-              const dow = parseYmd(d).getDay()
-              const holiday = holidaySet.has(d)
-              const saturday = dow === 6
-              const sunOrHol = dow === 0 || holiday
-
-              let tone: Tone = 'plain'
-              if (saturday) tone = 'sat'
-              else if (sunOrHol) tone = 'sunh'
-
-              return (
-                <RequestDateRow
-                  key={`${grid.period_type}-${periodFirst}-${d}`}
-                  dateYmd={d}
-                  labelText={formatShortDateLabel(d)}
-                  tone={tone}
-                  patterns={patterns}
-                  halfOpts={halfOpts}
-                  disabled={!!isSubmitted && !editing}
-                  row={rows[d] ?? rowDefault()}
-                  onChangeMode={(nv) =>
-                    setRows((prev) => ({ ...prev, [d]: nv }))
-                  }
-                />
-              )
-            })}
+        {!noSubmitPeriodAvailable && !allPeriodsExpiredThisMonth ? (
+          <div className="mt-6 pb-8">
+            <button
+              type="button"
+              className="w-full rounded-lg bg-slate-700 py-3 text-base font-semibold tracking-wide text-white hover:bg-slate-800 disabled:opacity-40"
+              disabled={
+                (!!isSubmitted && !editing) ||
+                workDates.length === 0 ||
+                formLocked
+              }
+              onClick={submit}
+            >
+              この内容で希望を提出する
+            </button>
           </div>
-        </div>
-
-        <div className="mt-6 pb-8">
-          <button
-            type="button"
-            className="w-full rounded-lg bg-slate-700 py-3 text-base font-semibold tracking-wide text-white hover:bg-slate-800 disabled:opacity-40"
-            disabled={(!!isSubmitted && !editing) || workDates.length === 0}
-            onClick={submit}
-          >
-            この内容で希望を提出する
-          </button>
-        </div>
+        ) : null}
       </main>
     </div>
   )
