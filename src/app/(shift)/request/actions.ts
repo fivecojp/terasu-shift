@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { getSession } from '@/lib/auth'
 import { ensureShiftSettingsForStore } from '@/lib/shift-settings-ensure'
 import {
@@ -39,7 +39,7 @@ export async function upsertShiftRequests(
   }
   const set = ensured.settings
 
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const grid = resolveGridForSelection(
     input.target_month,
     set,

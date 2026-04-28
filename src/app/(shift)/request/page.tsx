@@ -6,7 +6,7 @@ import {
   ymParamToTargetFirst,
 } from '@/lib/shift-request-periods'
 import { ensureShiftSettingsForStore } from '@/lib/shift-settings-ensure'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import type { ShiftPattern, ShiftRequest } from '@/types/database'
 import { RequestShiftClient } from '@/app/(shift)/request/RequestShiftClient'
 
@@ -31,7 +31,7 @@ export default async function RequestPage({
   }
   const settingsRow = ensured.settings
 
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   const sp = await searchParams
   const ymFromQuery = ymParamToTargetFirst(sp.ym ?? null)
