@@ -90,11 +90,14 @@ export function ScheduleGrid({
   }, [])
 
   return (
-    <div className="relative max-h-[min(75vh,960px)] overflow-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
-      <table className="min-w-[840px] border-collapse text-sm">
+    <div className="overflow-x-auto rounded-lg border border-zinc-200 shadow-sm">
+      <table
+        className="border-collapse text-sm"
+        style={{ minWidth: 'max-content' }}
+      >
         <thead>
-          <tr className="border-b border-zinc-200 bg-zinc-50">
-            <th className="sticky left-0 top-0 z-[30] border-r border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-medium text-zinc-600">
+          <tr>
+            <th className="sticky left-0 z-30 border-b border-r border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold text-zinc-500 whitespace-nowrap">
               スタッフ
             </th>
             {columnDates.map((d) => {
@@ -114,7 +117,7 @@ export function ScheduleGrid({
                 <th
                   key={d}
                   ref={isToday ? todayRef : undefined}
-                  className={`sticky top-0 z-10 min-w-[92px] whitespace-pre-line border-r border-zinc-100 px-1 py-2 text-center text-xs font-medium ${tone}`}
+                  className={`z-20 border-b border-r border-zinc-100 bg-zinc-50 px-2 py-2 text-center text-xs font-medium whitespace-pre-line ${tone}`}
                 >
                   {labelDate(d)}
                 </th>
@@ -129,7 +132,7 @@ export function ScheduleGrid({
               className={rowIdx % 2 === 1 ? 'bg-zinc-50/50' : 'bg-white'}
             >
               <td
-                className={`sticky left-0 z-20 whitespace-nowrap border-r border-zinc-200 px-3 py-2 text-sm font-medium ${
+                className={`sticky left-0 z-20 whitespace-nowrap border-b border-r border-zinc-200 px-3 py-2 text-sm font-medium ${
                   unsubmittedStaffIds.has(s.staff_id)
                     ? 'border-l-2 border-l-amber-400 bg-amber-50 text-amber-800'
                     : rowIdx % 2 === 1
@@ -150,6 +153,7 @@ export function ScheduleGrid({
                 return (
                   <td
                     key={`${s.staff_id}_${d}`}
+                    style={{ minWidth: '2.5rem' }}
                     className={`relative min-h-[44px] border-b border-r border-zinc-100 px-1 py-1 text-center align-middle text-xs ${
                       cellInteractive
                         ? 'cursor-pointer hover:bg-zinc-50'

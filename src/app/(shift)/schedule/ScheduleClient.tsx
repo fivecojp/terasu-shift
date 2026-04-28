@@ -209,43 +209,78 @@ export function ScheduleClient(init: Props) {
   return (
     <div className="min-h-full bg-zinc-50 pb-24">
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white shadow-sm">
-        <div className="mx-auto flex max-w-screen-xl flex-wrap items-center gap-3 px-4 py-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className="text-lg font-bold text-zinc-900">{storeName}</span>
-            <span className="text-zinc-300" aria-hidden>
+        <div className="mx-auto max-w-screen-xl">
+          <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-2">
+            <span className="shrink-0 text-base font-bold text-zinc-900">
+              {storeName}
+            </span>
+            <span className="shrink-0 text-zinc-300" aria-hidden>
               |
             </span>
-            <span className="text-sm text-zinc-500">{session.staff_name}</span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <Link
-              href={buildSchedulePath(
-                viewRange.prevStart,
-                scheduleViewKind
-              )}
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
-            >
-              ＜
-            </Link>
-            <span className="min-w-[7rem] text-center text-base font-semibold text-zinc-800">
-              {viewRange.viewLabel}
+            <span className="mr-auto shrink-0 text-sm text-zinc-500">
+              {session.staff_name}
             </span>
-            <Link
-              href={buildSchedulePath(
-                viewRange.nextStart,
-                scheduleViewKind
-              )}
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
-            >
-              ＞
-            </Link>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                href="/request"
+                className="whitespace-nowrap rounded-lg border border-zinc-300 px-2.5 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50"
+              >
+                希望シフト提出
+              </Link>
+              {role === 'leader' ? (
+                <Link
+                  href="/settings"
+                  className="shrink-0 rounded-lg border border-zinc-300 px-2.5 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50 whitespace-nowrap"
+                >
+                  設定
+                </Link>
+              ) : null}
+              {storeCount >= 2 ? (
+                <Link
+                  href="/login/select-store"
+                  className="whitespace-nowrap rounded-lg border border-zinc-300 px-2.5 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50"
+                >
+                  店舗切り替え
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                className="whitespace-nowrap text-xs text-zinc-400 underline hover:text-zinc-600"
+                onClick={() => void logoutAndRedirectToLogin()}
+              >
+                ログアウト
+              </button>
+            </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-zinc-700">
-            <span className="text-zinc-500">表示幅</span>
+          <div className="flex flex-wrap items-center gap-2 px-4 py-2">
+            <div className="flex shrink-0 items-center gap-1">
+              <Link
+                href={buildSchedulePath(
+                  viewRange.prevStart,
+                  scheduleViewKind
+                )}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-sm text-zinc-600 hover:bg-zinc-100"
+              >
+                ‹
+              </Link>
+              <span className="min-w-[6rem] shrink-0 text-center text-sm font-semibold text-zinc-800">
+                {viewRange.viewLabel}
+              </span>
+              <Link
+                href={buildSchedulePath(
+                  viewRange.nextStart,
+                  scheduleViewKind
+                )}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-sm text-zinc-600 hover:bg-zinc-100"
+              >
+                ›
+              </Link>
+            </div>
+
             <select
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
+              className="shrink-0 rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-xs text-zinc-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
               value={kindToViewSpan(scheduleViewKind)}
               onChange={(e) => {
                 const nextKind = viewSpanToKind(e.target.value as ViewSpan)
@@ -257,100 +292,67 @@ export function ScheduleClient(init: Props) {
               <option value="half">{viewSpanLabel('half')}</option>
               <option value="1m">{viewSpanLabel('1m')}</option>
             </select>
-          </label>
 
-          {role === 'leader' ? (
-            <div className="inline-flex rounded-lg border border-zinc-300">
-              <button
-                type="button"
-                className={`rounded-l-lg px-4 py-1.5 text-sm ${
-                  viewMode === 'request'
-                    ? 'bg-slate-700 font-semibold text-white'
-                    : 'border-r border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-50'
-                }`}
-                onClick={() => setViewMode('request')}
-              >
-                希望
-              </button>
-              <button
-                type="button"
-                className={`rounded-r-lg px-4 py-1.5 text-sm ${
-                  viewMode === 'shift'
-                    ? 'bg-slate-700 font-semibold text-white'
-                    : 'bg-white text-zinc-600 hover:bg-zinc-50'
-                }`}
-                onClick={() => setViewMode('shift')}
-              >
-                シフト
-              </button>
-            </div>
-          ) : null}
-
-          {role === 'leader' ? (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-zinc-500">公開：</span>
-              {publishForRange?.status === 'published' ? (
-                <span className="font-medium text-emerald-600">
-                  公開済み{' '}
-                  {publishForRange.published_at
-                    ? `（${publishForRange.published_at.slice(0, 10)}）`
-                    : ''}
-                </span>
-              ) : (
-                <>
-                  <span className="font-medium text-amber-600">ドラフト</span>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-                    onClick={() => void onPublish()}
-                  >
-                    公開する
-                  </button>
-                </>
-              )}
-            </div>
-          ) : null}
-
-          {role === 'leader' ? (
-            <button
-              type="button"
-              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
-              onClick={() => void onCsv()}
-            >
-              CSVエクスポート
-            </button>
-          ) : null}
-
-          <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
-            <Link
-              href="/request"
-              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
-            >
-              希望シフト提出
-            </Link>
             {role === 'leader' ? (
-              <Link
-                href="/settings"
-                className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
-              >
-                設定
-              </Link>
+              <div className="flex shrink-0 overflow-hidden rounded-lg border border-zinc-300">
+                <button
+                  type="button"
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-xs ${
+                    viewMode === 'request'
+                      ? 'bg-slate-700 font-semibold text-white'
+                      : 'border-r border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-50'
+                  }`}
+                  onClick={() => setViewMode('request')}
+                >
+                  希望
+                </button>
+                <button
+                  type="button"
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-xs ${
+                    viewMode === 'shift'
+                      ? 'bg-slate-700 font-semibold text-white'
+                      : 'bg-white text-zinc-600 hover:bg-zinc-50'
+                  }`}
+                  onClick={() => setViewMode('shift')}
+                >
+                  シフト
+                </button>
+              </div>
             ) : null}
-            {storeCount >= 2 ? (
-              <Link
-                href="/login/select-store"
-                className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
-              >
-                店舗切り替え
-              </Link>
+
+            {role === 'leader' ? (
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                <span className="shrink-0 text-xs text-zinc-500">公開：</span>
+                {publishForRange?.status === 'published' ? (
+                  <span className="shrink-0 text-xs font-medium text-emerald-600">
+                    公開済み{' '}
+                    {publishForRange.published_at
+                      ? `（${publishForRange.published_at.slice(0, 10)}）`
+                      : ''}
+                  </span>
+                ) : (
+                  <>
+                    <span className="shrink-0 text-xs font-medium text-amber-600">
+                      ドラフト
+                    </span>
+                    <button
+                      type="button"
+                      className="shrink-0 whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                      onClick={() => void onPublish()}
+                    >
+                      公開する
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  className="hidden shrink-0 whitespace-nowrap rounded-lg border border-zinc-300 px-2.5 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50 sm:inline-flex"
+                  onClick={() => void onCsv()}
+                >
+                  CSVエクスポート
+                </button>
+              </div>
             ) : null}
-            <button
-              type="button"
-              className="text-sm text-zinc-400 underline hover:text-zinc-600"
-              onClick={() => void logoutAndRedirectToLogin()}
-            >
-              ログアウト
-            </button>
           </div>
         </div>
       </header>
