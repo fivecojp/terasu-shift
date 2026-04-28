@@ -1,0 +1,113 @@
+# TERASU-Shift .cursorrules
+
+## プロジェクト概要
+バー・ナイトクラブ複数店舗のシフト管理アプリ。
+スタック: Next.js (App Router) / TypeScript / Tailwind CSS / Supabase (PostgreSQL)
+
+---
+
+## ⚠️ 最重要：既存 Supabase DB を絶対に変更しない
+
+### 禁止事項（コード・SQLを問わず一切やらない）
+- 既存テーブルへの `ALTER TABLE`（カラム追加・削除・型変更・リネーム）
+- 既存テーブルへの `DROP`・`TRUNCATE`・`DELETE` 全件
+- 既存 RLS ポリシーの `DROP` または `CREATE`（新規4テーブル以外）
+- `supabase db push` / `supabase migration` の実行提案
+- 既存テーブルのカラム名・型を変更するいかなる操作
+
+### 既存テーブル一覧（参照のみ・絶対変更禁止）
+```
+companies / stores / staffs / memberships / shifts
+attendances / clock_in_reports / clock_out_reports
+clock_in_check_items / clock_out_check_items
+clock_in_check_answers / clock_out_check_answers
+tasks / task_routines / task_instances / task_assignees
+trigger_task_templates / announcements / thanks_points
+budgets / sales / actual_business_hours
+store_settings / store_business_hours / business_time_categories / holidays
+```
+
+### 新規追加済みテーブル（読み書きOK）
+```
+shift_patterns / shift_settings / shift_requests / shift_publish_statuses
+```
+
+### 既存テーブルへの追加済みカラム（参照のみ）
+```
+shifts.shift_pattern_id        uuid NULL
+holidays.is_auto_imported      boolean
+holidays.imported_at           timestamptz NULL
+```
+
+---
+
+## 技術ルール
+
+### Supabase クライアント
+- ブラウザ: `lib/supabase/client.ts` の `createBrowserClient`
+- Server Component: `lib/supabase/server.ts` の `createServerClient`
+- 環境変数: `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Service Role Key は使わない（フロントエンドから直接使用禁止）
+
+### 時刻の扱い（必須ルール）
+シフトパターン・希望シフトの時刻はすべて **integer（分数）** で管理する。
+- `timestamptz` や `time` 型への変換は行わない
+- `00:00 = 0` / `10:00 = 600` / `22:00 = 1320` / `25:00 = 1500` / `26:30 = 1590`
+- 変換は必ず `lib/time.ts` の関数を使う
+
+```typescript
+// lib/time.ts
+export function minutesToDisplay(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+export function displayToMinutes(display: string): number {
+  const [h, m] = display.split(':').map(Number)
+  return h * 60 + m
+}
+```
+
+- ただし `shifts.scheduled_start_at` / `scheduled_end_at` は既存の `timestamptz` のまま扱う
+
+### shift_requests の保存
+必ず upsert を使う（UNIQUE制約: `store_id, staff_id, work_date`）
+```typescript
+await supabase
+  .from('shift_requests')
+  .upsert(rows, { onConflict: 'store_id,staff_id,work_date' })
+```
+
+### スタッフ表示フィルタ
+退社・非表示スタッフは常に除外する
+```typescript
+.eq('display_status', 'visible')
+.or('leave_date.is.null,leave_date.gt.' + today)
+```
+
+### シフト公開制御
+- `shifts` の general 向け表示は RLS が自動制御（`shift_publish_statuses.status = 'published'` 期間のみ）
+- 公開操作は `shift_publish_statuses` の1レコード UPDATE のみ
+- `shifts` テーブルにステータスカラムは存在しない・追加しない
+
+---
+
+## ロール
+- `general`：希望シフト提出・確定シフト閲覧（published分のみ）
+- `leader`：シフト作成・編集・公開・設定・CSV出力
+
+---
+
+## コーディング規約
+- TypeScript strict モード
+- `any` 型禁止
+- Supabase のレスポンスは必ず `error` チェックをしてから `data` を使う
+- コンポーネントは Server Component をデフォルト、インタラクションが必要な部分のみ `'use client'`
+- Tailwind CSS のみでスタイリング（外部UIライブラリはshadcn/uiのみ許容）
+- `console.log` をコミットしない
+
+---
+
+## デバイス方針
+- 希望シフト提出画面：スマホ最適化（縦スクロール・ネイティブselect推奨）
+- シフト作成・設定画面：PC/タブレットのみ（スマホ非対応で割り切る）
