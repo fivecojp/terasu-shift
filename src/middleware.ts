@@ -31,10 +31,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (
-    (pathname.startsWith('/schedule') || pathname.startsWith('/settings')) &&
-    m.role === 'general'
-  ) {
+  if (pathname.startsWith('/settings') && m.role === 'general') {
     return NextResponse.redirect(new URL('/request', request.url))
   }
 

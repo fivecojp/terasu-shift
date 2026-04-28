@@ -11,6 +11,7 @@ type Props = {
   columnDates: string[]
   holidays: Set<string>
   mode: 'request' | 'shift'
+  role: 'general' | 'leader'
   patternsById: Map<string, ShiftPattern>
   shiftsKey: Map<string, Shift>
   requestsKey: Map<string, ShiftRequest>
@@ -68,6 +69,7 @@ export function ScheduleGrid({
   columnDates,
   holidays,
   mode,
+  role,
   patternsById,
   shiftsKey,
   requestsKey,
@@ -146,13 +148,19 @@ export function ScheduleGrid({
                 const req = requestsKey.get(k)
                 const sh = shiftsKey.get(k)
                 const showReq = mode === 'request'
+                const cellInteractive =
+                  role === 'leader' && mode === 'shift'
 
                 return (
                   <td
                     key={`${s.staff_id}_${d}`}
-                    className="relative min-h-[44px] cursor-pointer border-b border-r border-zinc-100 px-1 py-1 text-center align-middle text-xs hover:bg-zinc-50"
-                    onClick={() =>
-                      mode === 'shift' ? onPickCell(d) : undefined
+                    className={`relative min-h-[44px] border-b border-r border-zinc-100 px-1 py-1 text-center align-middle text-xs ${
+                      cellInteractive
+                        ? 'cursor-pointer hover:bg-zinc-50'
+                        : 'cursor-default'
+                    }`}
+                    onClick={
+                      cellInteractive ? () => onPickCell(d) : undefined
                     }
                     title={
                       showReq && req

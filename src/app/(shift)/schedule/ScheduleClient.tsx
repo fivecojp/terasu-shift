@@ -33,6 +33,7 @@ export type { StaffRow }
 
 type Props = SchedulePageData & {
   session: SessionUser
+  role: 'general' | 'leader'
   storeCount: number
   viewStartYmd: string
   scheduleViewKind: ScheduleViewKind
@@ -42,6 +43,7 @@ export function ScheduleClient(init: Props) {
   const router = useRouter()
   const {
     session,
+    role,
     storeCount,
     storeName,
     staff,
@@ -56,8 +58,11 @@ export function ScheduleClient(init: Props) {
     scheduleViewKind,
   } = init
 
-  const [mode, setMode] = useState<'request' | 'shift'>('request')
+  const [viewMode, setViewMode] = useState<'request' | 'shift'>('request')
   const [ganttWorkDate, setGanttWorkDate] = useState<string | null>(null)
+
+  const effectiveViewMode =
+    role === 'general' ? 'shift' : viewMode
 
   const holidaysSet = useMemo(
     () => new Set(holidays.map((h) => h.holiday_date)),
@@ -241,64 +246,76 @@ export function ScheduleClient(init: Props) {
             </select>
           </label>
 
-          <div className="inline-flex rounded-lg border border-zinc-300">
+          {role === 'leader' ? (
+            <div className="inline-flex rounded-lg border border-zinc-300">
+              <button
+                type="button"
+                className={`rounded-l-lg px-4 py-1.5 text-sm ${
+                  viewMode === 'request'
+                    ? 'bg-slate-700 font-semibold text-white'
+                    : 'border-r border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-50'
+                }`}
+                onClick={() => setViewMode('request')}
+              >
+                希望
+              </button>
+              <button
+                type="button"
+                className={`rounded-r-lg px-4 py-1.5 text-sm ${
+                  viewMode === 'shift'
+                    ? 'bg-slate-700 font-semibold text-white'
+                    : 'bg-white text-zinc-600 hover:bg-zinc-50'
+                }`}
+                onClick={() => setViewMode('shift')}
+              >
+                シフト
+              </button>
+            </div>
+          ) : null}
+
+          {role === 'leader' ? (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-zinc-500">公開：</span>
+              {publishForRange?.status === 'published' ? (
+                <span className="font-medium text-emerald-600">
+                  公開済み{' '}
+                  {publishForRange.published_at
+                    ? `（${publishForRange.published_at.slice(0, 10)}）`
+                    : ''}
+                </span>
+              ) : (
+                <>
+                  <span className="font-medium text-amber-600">ドラフト</span>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                    onClick={() => void onPublish()}
+                  >
+                    公開する
+                  </button>
+                </>
+              )}
+            </div>
+          ) : null}
+
+          {role === 'leader' ? (
             <button
               type="button"
-              className={`rounded-l-lg px-4 py-1.5 text-sm ${
-                mode === 'request'
-                  ? 'bg-slate-700 font-semibold text-white'
-                  : 'border-r border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-50'
-              }`}
-              onClick={() => setMode('request')}
+              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+              onClick={() => void onCsv()}
             >
-              希望
+              CSVエクスポート
             </button>
-            <button
-              type="button"
-              className={`rounded-r-lg px-4 py-1.5 text-sm ${
-                mode === 'shift'
-                  ? 'bg-slate-700 font-semibold text-white'
-                  : 'bg-white text-zinc-600 hover:bg-zinc-50'
-              }`}
-              onClick={() => setMode('shift')}
-            >
-              シフト
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-zinc-500">公開：</span>
-            {publishForRange?.status === 'published' ? (
-              <span className="font-medium text-emerald-600">
-                公開済み{' '}
-                {publishForRange.published_at
-                  ? `（${publishForRange.published_at.slice(0, 10)}）`
-                  : ''}
-              </span>
-            ) : (
-              <>
-                <span className="font-medium text-amber-600">ドラフト</span>
-                <button
-                  type="button"
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-                  onClick={() => void onPublish()}
-                >
-                  公開する
-                </button>
-              </>
-            )}
-          </div>
-
-          <button
-            type="button"
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
-            onClick={() => void onCsv()}
-          >
-            CSVエクスポート
-          </button>
+          ) : null}
 
           <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
-            {session.role === 'leader' ? (
+            <Link
+              href="/request"
+              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+            >
+              希望シフト提出
+            </Link>
+            {role === 'leader' ? (
               <Link
                 href="/settings"
                 className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
@@ -330,18 +347,20 @@ export function ScheduleClient(init: Props) {
           staff={staff}
           columnDates={columnDates}
           holidays={holidaysSet}
-          mode={mode}
+          mode={effectiveViewMode}
+          role={role}
           patternsById={patternsById}
           shiftsKey={shiftsKey}
           requestsKey={requestsKey}
           unsubmittedStaffIds={unsubmittedStaffIds}
           onPickCell={(wd) => {
-            if (mode === 'shift') onPickCell(wd)
+            if (effectiveViewMode === 'shift') onPickCell(wd)
           }}
         />
 
-        {ganttWorkDate &&
-        mode === 'shift' &&
+        {role === 'leader' &&
+        ganttWorkDate &&
+        effectiveViewMode === 'shift' &&
         staff.length ? (
           <ScheduleGantt
             workDate={ganttWorkDate}
@@ -356,7 +375,8 @@ export function ScheduleClient(init: Props) {
             onSave={onGanttSave}
           />
         ) : (
-          mode === 'shift' && (
+          role === 'leader' &&
+          effectiveViewMode === 'shift' && (
             <p className="mt-4 text-center text-sm text-zinc-400">
               「シフト」表示で日付セルをクリックすると、ガントチャートが表示されます。
             </p>

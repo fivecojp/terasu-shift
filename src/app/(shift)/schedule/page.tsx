@@ -30,7 +30,6 @@ export default async function SchedulePage({
 }) {
   const session = await getSession()
   if (!session) redirect('/login')
-  if (session.role !== 'leader') redirect('/request')
 
   const sessionPayload = await getSessionPayload()
   const storeCount = sessionPayload?.memberships.length ?? 0
@@ -160,6 +159,7 @@ export default async function SchedulePage({
   return (
     <ScheduleClient
       session={session}
+      role={session.role}
       storeCount={storeCount}
       storeName={storeRow?.store_name?.trim() || '店舗'}
       staff={staff}

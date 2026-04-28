@@ -445,6 +445,12 @@ export function RequestShiftClient(props: Props) {
                     店舗切り替え
                   </Link>
                 ) : null}
+                <Link
+                  href="/schedule"
+                  className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+                >
+                  シフト表へ
+                </Link>
                 <button
                   type="button"
                   className="text-sm text-zinc-400 underline hover:text-zinc-600"
