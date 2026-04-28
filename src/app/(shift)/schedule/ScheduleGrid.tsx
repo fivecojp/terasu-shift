@@ -87,14 +87,24 @@ export function ScheduleGrid({
         inline: 'center',
       })
     }
-  }, [])
+  }, [columnDates])
 
   return (
     <div className="overflow-x-auto rounded-lg border border-zinc-200 shadow-sm">
       <table
-        className="border-collapse text-sm"
-        style={{ minWidth: 'max-content' }}
+        className="w-full border-collapse text-sm"
+        style={{
+          tableLayout: 'fixed',
+          width: '100%',
+          minWidth: `calc(8rem + ${columnDates.length} * 3rem)`,
+        }}
       >
+        <colgroup>
+          <col style={{ width: '8rem' }} />
+          {columnDates.map((d) => (
+            <col key={d} style={{ width: '3rem' }} />
+          ))}
+        </colgroup>
         <thead>
           <tr>
             <th className="sticky left-0 z-30 border-b border-r border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold text-zinc-500 whitespace-nowrap">
@@ -153,7 +163,6 @@ export function ScheduleGrid({
                 return (
                   <td
                     key={`${s.staff_id}_${d}`}
-                    style={{ minWidth: '2.5rem' }}
                     className={`relative min-h-[44px] border-b border-r border-zinc-100 px-1 py-1 text-center align-middle text-xs ${
                       cellInteractive
                         ? 'cursor-pointer hover:bg-zinc-50'
