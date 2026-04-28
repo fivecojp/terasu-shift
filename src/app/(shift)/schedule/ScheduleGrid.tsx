@@ -131,7 +131,7 @@ export function ScheduleGrid({
                 return (
                   <th
                     key={d}
-                    className={`sticky top-0 z-20 border-b border-r border-zinc-100 bg-zinc-50 px-1 py-1.5 text-center text-xs font-medium whitespace-pre-line ${tone}`}
+                    className={`sticky top-0 z-20 border-b border-r border-zinc-100 px-1 py-1.5 text-center text-xs font-medium whitespace-pre-line ${tone}`}
                     style={{ willChange: 'transform' }}
                   >
                     {labelDate(d)}
