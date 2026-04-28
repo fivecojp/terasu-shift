@@ -82,7 +82,7 @@ export function ScheduleGrid({
   useEffect(() => {
     if (todayRef.current) {
       todayRef.current.scrollIntoView({
-        behavior: 'smooth',
+        behavior: 'instant',
         block: 'nearest',
         inline: 'center',
       })
@@ -94,15 +94,13 @@ export function ScheduleGrid({
       <table
         className="w-full border-collapse text-sm"
         style={{
-          tableLayout: 'fixed',
-          width: '100%',
-          minWidth: `calc(8rem + ${columnDates.length} * 3rem)`,
+          minWidth: `${128 + columnDates.length * 48}px`,
         }}
       >
         <colgroup>
-          <col style={{ width: '8rem' }} />
+          <col style={{ width: '8rem', minWidth: '8rem' }} />
           {columnDates.map((d) => (
-            <col key={d} style={{ width: '3rem' }} />
+            <col key={d} style={{ width: '3rem', minWidth: '3rem' }} />
           ))}
         </colgroup>
         <thead>

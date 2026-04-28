@@ -542,7 +542,7 @@ export function RequestShiftClient(props: Props) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50">
+    <div className="flex flex-col bg-zinc-50">
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white shadow-sm">
         {!headerExpanded ? (
           <div className="mx-auto flex w-full max-w-lg items-start justify-between gap-2 px-4 py-2">
@@ -643,7 +643,7 @@ export function RequestShiftClient(props: Props) {
         )}
       </header>
 
-      <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-8 pt-0">
+      <main className="mx-auto w-full max-w-lg px-4 pb-8 pt-0">
         <h2 className="px-0 pb-2 pt-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
           希望シフト
         </h2>
