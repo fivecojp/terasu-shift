@@ -251,31 +251,86 @@ export function RequestShiftClient(props: Props) {
   const d1 = new Date(ymNow.getFullYear(), ymNow.getMonth() + 1, 1)
   const ym1 = `${d1.getFullYear()}-${String(d1.getMonth() + 1).padStart(2, '0')}`
 
+  const monthSummaryLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat('ja-JP', {
+        year: 'numeric',
+        month: 'long',
+      }).format(parseYmd(targetMonthFirst)),
+    [targetMonthFirst]
+  )
+
+  const periodSummaryLabel = useMemo(() => {
+    switch (settings.shift_cycle) {
+      case 'monthly':
+        return '全期間（月初〜月末）'
+      case 'semimonthly':
+        return periodSel.kind === 'semimonthly' && periodSel.phase === 'second_half'
+          ? '後半（16日〜月末）'
+          : '前半（1〜15日）'
+      case 'weekly': {
+        const id =
+          periodSel.kind === 'weekly' ? periodSel.weekId : weeks[0]?.id
+        const w = weeks.find((x) => x.id === id)
+        return w?.label ?? weeks[0]?.label ?? '対象週'
+      }
+      case 'biweekly': {
+        const id =
+          periodSel.kind === 'biweekly' ? periodSel.biweekId : biweeks[0]?.id
+        const b = biweeks.find((x) => x.id === id)
+        return b?.label ?? biweeks[0]?.label ?? '対象期間（2週）'
+      }
+      default:
+        return ''
+    }
+  }, [biweeks, periodSel, settings.shift_cycle, weeks])
+
+  const [headerExpanded, setHeaderExpanded] = useState(false)
+
+  const monthToggleActive =
+    'min-h-10 flex-none rounded-full px-4 py-2 text-sm font-semibold bg-slate-700 text-white'
+  const monthToggleInactive =
+    'min-h-10 flex-none rounded-full px-4 py-2 text-sm font-medium border border-slate-300 bg-white text-slate-600'
+
   const periodControl =
     settings.shift_cycle === 'monthly' ? (
       <div className="flex flex-col gap-2">
         <span className="text-xs font-medium text-zinc-500">対象期間</span>
-        <p className="text-sm text-zinc-800">全期間（月初〜月末）</p>
+        <p className="text-sm font-medium text-slate-800">全期間（月初〜月末）</p>
       </div>
     ) : settings.shift_cycle === 'semimonthly' ? (
       <div className="flex flex-col gap-2">
         <span className="text-xs font-medium text-zinc-500">対象期間</span>
-        <select
-          className="min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base"
-          value={
-            periodSel.kind === 'semimonthly' ? periodSel.phase : 'first_half'
-          }
-          disabled={!!isSubmitted && !editing}
-          onChange={(e) =>
-            setPeriodSel({
-              kind: 'semimonthly',
-              phase: e.target.value === 'second_half' ? 'second_half' : 'first_half',
-            })
-          }
-        >
-          <option value="first_half">前半（1〜15日）</option>
-          <option value="second_half">後半（16日〜月末）</option>
-        </select>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={!!isSubmitted && !editing}
+            className={`disabled:opacity-50 ${
+              periodSel.kind === 'semimonthly' && periodSel.phase === 'first_half'
+                ? monthToggleActive
+                : monthToggleInactive
+            }`}
+            onClick={() =>
+              setPeriodSel({ kind: 'semimonthly', phase: 'first_half' })
+            }
+          >
+            前半（1〜15日）
+          </button>
+          <button
+            type="button"
+            disabled={!!isSubmitted && !editing}
+            className={`disabled:opacity-50 ${
+              periodSel.kind === 'semimonthly' && periodSel.phase === 'second_half'
+                ? monthToggleActive
+                : monthToggleInactive
+            }`}
+            onClick={() =>
+              setPeriodSel({ kind: 'semimonthly', phase: 'second_half' })
+            }
+          >
+            後半（16日〜月末）
+          </button>
+        </div>
       </div>
     ) : settings.shift_cycle === 'weekly' ? (
       <div className="flex flex-col gap-2">
@@ -284,7 +339,7 @@ export function RequestShiftClient(props: Props) {
           <p className="text-sm text-amber-800">この月に表示できる週がありません。</p>
         ) : (
           <select
-            className="min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base"
+            className="min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base font-medium text-slate-800"
             value={
               periodSel.kind === 'weekly'
                 ? periodSel.weekId
@@ -310,7 +365,7 @@ export function RequestShiftClient(props: Props) {
           <p className="text-sm text-amber-800">この月に表示できる2週ブロックがありません。</p>
         ) : (
           <select
-            className="min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base"
+            className="min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base font-medium text-slate-800"
             value={
               periodSel.kind === 'biweekly'
                 ? periodSel.biweekId
@@ -333,62 +388,82 @@ export function RequestShiftClient(props: Props) {
 
   return (
     <div className="flex min-h-full flex-col bg-zinc-50">
-      <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/95 px-4 py-4 shadow-sm backdrop-blur">
-        <div className="mx-auto flex w-full max-w-lg flex-col gap-4">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate text-xs text-zinc-500">締め切り</p>
-              <p className="text-base font-semibold text-red-700">
-                {formatJaLong(deadlineYmd)}
+      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 px-4 py-2 shadow-sm backdrop-blur">
+        {!headerExpanded ? (
+          <div className="mx-auto flex w-full max-w-lg items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-slate-800">
+                {monthSummaryLabel} · {periodSummaryLabel}
               </p>
-              <p className="mt-2 text-xs text-zinc-500">
-                {settings.deadline_type === 'days_before'
-                  ? `期間開始日の ${settings.deadline_value} 日前まで`
-                  : settings.deadline_type === 'weeks_before'
-                    ? `期間開始日の ${settings.deadline_value} 週前まで`
-                    : `期間開始日の ${settings.deadline_value} か月前まで`}
+              <p className="mt-0.5 truncate text-xs font-medium text-red-700">
+                締切 {formatJaLong(deadlineYmd)}
               </p>
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-2 text-right sm:flex-row sm:items-center">
-              <div className="text-sm">
-                <p className="text-xs text-zinc-500">ログイン中</p>
-                <p className="font-medium text-zinc-900">{session.staff_name}</p>
+            <button
+              type="button"
+              className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800"
+              onClick={() => setHeaderExpanded(true)}
+            >
+              ▼ 設定を表示
+            </button>
+          </div>
+        ) : (
+          <div className="mx-auto flex w-full max-w-lg flex-col gap-3">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-xs text-zinc-500">締め切り</p>
+                <p className="text-base font-semibold text-red-700">
+                  {formatJaLong(deadlineYmd)}
+                </p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {settings.deadline_type === 'days_before'
+                    ? `期間開始日の ${settings.deadline_value} 日前まで`
+                    : settings.deadline_type === 'weeks_before'
+                      ? `期間開始日の ${settings.deadline_value} 週前まで`
+                      : `期間開始日の ${settings.deadline_value} か月前まで`}
+                </p>
               </div>
-              <button
-                type="button"
-                className="min-h-10 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-50"
-                onClick={() => void logoutAndRedirectToLogin()}
-              >
-                ログアウト
-              </button>
+              <div className="flex shrink-0 flex-col items-end gap-2 text-right sm:flex-row sm:items-center">
+                <div className="text-sm">
+                  <p className="text-xs text-zinc-500">ログイン中</p>
+                  <p className="font-medium text-zinc-900">{session.staff_name}</p>
+                </div>
+                <button
+                  type="button"
+                  className="min-h-10 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-50"
+                  onClick={() => void logoutAndRedirectToLogin()}
+                >
+                  ログアウト
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Link
-              className={`min-h-10 flex-none rounded-full px-4 py-2 text-sm font-medium ${
-                ym === ym0
-                  ? 'bg-zinc-900 text-white'
-                  : 'border border-zinc-300 bg-white text-zinc-800'
-              }`}
-              href={`/request?ym=${ym0}`}
-            >
-              今月
-            </Link>
-            <Link
-              className={`min-h-10 flex-none rounded-full px-4 py-2 text-sm font-medium ${
-                ym === ym1
-                  ? 'bg-zinc-900 text-white'
-                  : 'border border-zinc-300 bg-white text-zinc-800'
-              }`}
-              href={`/request?ym=${ym1}`}
-            >
-              来月
-            </Link>
-          </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                className={ym === ym0 ? monthToggleActive : monthToggleInactive}
+                href={`/request?ym=${ym0}`}
+              >
+                今月
+              </Link>
+              <Link
+                className={ym === ym1 ? monthToggleActive : monthToggleInactive}
+                href={`/request?ym=${ym1}`}
+              >
+                来月
+              </Link>
+            </div>
 
-          <div>{periodControl}</div>
-        </div>
+            <div>{periodControl}</div>
+
+            <button
+              type="button"
+              className="w-full rounded-lg border border-slate-300 bg-slate-50 py-2 text-sm font-medium text-slate-800"
+              onClick={() => setHeaderExpanded(false)}
+            >
+              ▲ 設定を閉じる
+            </button>
+          </div>
+        )}
       </header>
 
       <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-16 pt-4">
@@ -417,7 +492,7 @@ export function RequestShiftClient(props: Props) {
             <span>希望</span>
           </div>
 
-          <div className="max-h-[calc(100vh-18rem)] overflow-y-auto overscroll-y-contain">
+          <div className="max-h-[calc(100vh-18rem)] overflow-y-auto overscroll-y-contain pb-28">
             {workDates.map((d) => {
               const dow = parseYmd(d).getDay()
               const holiday = holidaySet.has(d)

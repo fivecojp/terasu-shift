@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import type { Shift, ShiftPattern, ShiftRequest } from '@/types/database'
 import { formatShiftTimeRangeCompact } from '@/lib/jst-shift-time'
 import { minutesToDisplay } from '@/lib/time'
@@ -13,6 +14,7 @@ type Props = {
   patternsById: Map<string, ShiftPattern>
   shiftsKey: Map<string, Shift>
   requestsKey: Map<string, ShiftRequest>
+  unsubmittedStaffIds: Set<string>
   onPickCell: (workDate: string) => void
 }
 
@@ -69,8 +71,22 @@ export function ScheduleGrid({
   patternsById,
   shiftsKey,
   requestsKey,
+  unsubmittedStaffIds,
   onPickCell,
 }: Props) {
+  const todayStr = new Date().toLocaleDateString('sv-SE')
+  const todayRef = useRef<HTMLTableCellElement>(null)
+
+  useEffect(() => {
+    if (todayRef.current) {
+      todayRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      })
+    }
+  }, [])
+
   return (
       <div className="relative overflow-x-auto rounded-lg border border-zinc-300 bg-white">
         <table className="min-w-[840px] border-collapse text-sm">
@@ -84,8 +100,10 @@ export function ScheduleGrid({
                 const dt = new Date(y, mo - 1, day)
                 const dow = dt.getDay()
                 const hol = holidays.has(d)
-                const tone =
-                  dow === 6
+                const isToday = d === todayStr
+                const tone = isToday
+                  ? 'bg-blue-600 text-white font-bold'
+                  : dow === 6
                     ? 'bg-sky-100'
                     : dow === 0 || hol
                       ? 'bg-rose-100'
@@ -93,7 +111,12 @@ export function ScheduleGrid({
                 return (
                   <th
                     key={d}
-                    className={`min-w-[92px] whitespace-pre-line border-l border-zinc-200 px-2 py-3 text-center font-medium text-zinc-800 ${tone}`}
+                    ref={isToday ? todayRef : undefined}
+                    className={`min-w-[92px] whitespace-pre-line border-l border-zinc-200 px-2 py-3 text-center ${
+                      isToday
+                        ? tone
+                        : `font-medium text-zinc-800 ${tone}`
+                    }`}
                   >
                     {labelDate(d)}
                   </th>
@@ -104,7 +127,13 @@ export function ScheduleGrid({
           <tbody>
             {staff.map((s) => (
               <tr key={s.staff_id} className="border-b border-zinc-100">
-                <td className="sticky left-0 z-10 border-r border-zinc-200 bg-white px-2 py-3 font-medium text-zinc-900">
+                <td
+                  className={`sticky left-0 z-10 border-r border-zinc-200 px-2 py-3 font-medium ${
+                    unsubmittedStaffIds.has(s.staff_id)
+                      ? 'border-l-2 border-l-amber-400 bg-amber-50 text-amber-800'
+                      : 'bg-white text-zinc-900'
+                  }`}
+                >
                   {s.staff_name}
                 </td>
                 {columnDates.map((d) => {

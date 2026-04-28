@@ -85,18 +85,18 @@ export function ScheduleClient(init: Props) {
     )
   }, [periodEnd, periodStart, publishRows])
 
-  const staffWithRequest = useMemo(() => {
-    const s = new Set<string>()
+  /** 対象月に希望が1件でもある staff_id（page 取得の staff は visible・退職日なしのみ） */
+  const unsubmittedStaffIds = useMemo(() => {
+    const withRequest = new Set<string>()
     for (const r of requests) {
-      if (r.target_month === targetMonthFirst) s.add(r.staff_id)
+      if (r.target_month === targetMonthFirst) withRequest.add(r.staff_id)
     }
-    return s
-  }, [requests, targetMonthFirst])
-
-  const unsubmitted = useMemo(
-    () => staff.filter((x) => !staffWithRequest.has(x.staff_id)),
-    [staff, staffWithRequest]
-  )
+    const ids = new Set<string>()
+    for (const x of staff) {
+      if (!withRequest.has(x.staff_id)) ids.add(x.staff_id)
+    }
+    return ids
+  }, [requests, staff, targetMonthFirst])
 
   const requestByStaffForGantt = useMemo(() => {
     const m = new Map<string, import('@/types/database').ShiftRequest>()
@@ -292,14 +292,6 @@ export function ScheduleClient(init: Props) {
             </button>
           </div>
 
-          {unsubmitted.length > 0 ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-              <span className="font-medium">
-                {targetMonthFirst.slice(0, 7)} の希望が未提出のスタッフ：
-              </span>{' '}
-              {unsubmitted.map((u) => u.staff_name).join('、')}
-            </div>
-          ) : null}
         </div>
       </header>
 
@@ -312,6 +304,7 @@ export function ScheduleClient(init: Props) {
           patternsById={patternsById}
           shiftsKey={shiftsKey}
           requestsKey={requestsKey}
+          unsubmittedStaffIds={unsubmittedStaffIds}
           onPickCell={(wd) => {
             if (mode === 'shift') onPickCell(wd)
           }}

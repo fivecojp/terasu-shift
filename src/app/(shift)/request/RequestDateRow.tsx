@@ -98,7 +98,7 @@ export function RequestDateRow({
         </label>
         <select
           id={`req-${dateYmd}`}
-          className="min-h-11 min-w-0 rounded-lg border border-zinc-300 bg-white px-2 py-2 text-base text-zinc-900"
+          className="min-h-11 min-w-0 rounded-lg border border-zinc-300 bg-white px-2 py-2 text-base font-medium text-slate-800"
           disabled={disabled}
           value={
             sel === 'custom' && !halfOpts.length
@@ -136,7 +136,7 @@ export function RequestDateRow({
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <label className="text-zinc-600">開始</label>
             <select
-              className="min-h-11 min-w-[7rem] rounded-lg border border-zinc-300 bg-white px-2 py-2"
+              className="min-h-11 min-w-[7rem] rounded-lg border border-zinc-300 bg-white px-2 py-2 text-base font-medium text-slate-800"
               disabled={disabled}
               value={row.customStart ?? ''}
               onChange={(e) =>
@@ -156,7 +156,7 @@ export function RequestDateRow({
             <span className="text-zinc-500">〜</span>
             <label className="text-zinc-600">終了</label>
             <select
-              className="min-h-11 min-w-[7rem] rounded-lg border border-zinc-300 bg-white px-2 py-2"
+              className="min-h-11 min-w-[7rem] rounded-lg border border-zinc-300 bg-white px-2 py-2 text-base font-medium text-slate-800"
               disabled={disabled}
               value={row.customEnd ?? ''}
               onChange={(e) =>
