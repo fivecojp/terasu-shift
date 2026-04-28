@@ -33,6 +33,7 @@ export type { StaffRow }
 
 type Props = SchedulePageData & {
   session: SessionUser
+  storeCount: number
   viewStartYmd: string
   scheduleViewKind: ScheduleViewKind
 }
@@ -41,6 +42,7 @@ export function ScheduleClient(init: Props) {
   const router = useRouter()
   const {
     session,
+    storeCount,
     storeName,
     staff,
     settings,
@@ -202,6 +204,14 @@ export function ScheduleClient(init: Props) {
                   className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
                 >
                   設定
+                </Link>
+              ) : null}
+              {storeCount >= 2 ? (
+                <Link
+                  href="/login/select-store"
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                >
+                  店舗切り替え
                 </Link>
               ) : null}
               <button

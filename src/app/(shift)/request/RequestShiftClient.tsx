@@ -116,6 +116,7 @@ function rowToPayload(rv: RowVals): UpsertShiftRowPayload {
 
 export type Props = {
   session: SessionUser
+  storeCount: number
   settings: ShiftSetting
   patterns: ShiftPattern[]
   holidays: { holiday_date: string }[]
@@ -127,8 +128,16 @@ export type Props = {
 }
 
 export function RequestShiftClient(props: Props) {
-  const { session, settings, patterns, holidays, requests, targetMonthFirst, ymQuery } =
-    props
+  const {
+    session,
+    storeCount,
+    settings,
+    patterns,
+    holidays,
+    requests,
+    targetMonthFirst,
+    ymQuery,
+  } = props
 
   const router = useRouter()
   const ym = ymParamToTargetFirst(ymQuery) ?? targetMonthFirst.slice(0, 7)
@@ -428,6 +437,14 @@ export function RequestShiftClient(props: Props) {
                   <p className="text-xs text-zinc-500">ログイン中</p>
                   <p className="font-medium text-zinc-900">{session.staff_name}</p>
                 </div>
+                {storeCount >= 2 ? (
+                  <Link
+                    href="/login/select-store"
+                    className="min-h-10 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                  >
+                    店舗切り替え
+                  </Link>
+                ) : null}
                 <button
                   type="button"
                   className="min-h-10 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-50"

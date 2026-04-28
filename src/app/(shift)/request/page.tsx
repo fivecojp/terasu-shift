@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
+import { getSession, getSessionPayload } from '@/lib/auth'
 import {
   defaultTargetMonth,
   monthRangeInclusive,
@@ -17,6 +17,9 @@ export default async function RequestPage({
 }) {
   const session = await getSession()
   if (!session) redirect('/login')
+
+  const sessionPayload = await getSessionPayload()
+  const storeCount = sessionPayload?.memberships.length ?? 0
 
   const ensured = await ensureShiftSettingsForStore(session.store_id)
   if (!ensured.ok) {
@@ -65,6 +68,7 @@ export default async function RequestPage({
   return (
     <RequestShiftClient
       session={session}
+      storeCount={storeCount}
       settings={settingsRow}
       patterns={(patternsRows ?? []) as ShiftPattern[]}
       holidays={holidaysRows ?? []}

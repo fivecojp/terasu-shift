@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
+import { getSession, getSessionPayload } from '@/lib/auth'
 import { ensureShiftSettingsForStore } from '@/lib/shift-settings-ensure'
 import { createServiceClient } from '@/lib/supabase/service'
 import {
@@ -31,6 +31,9 @@ export default async function SchedulePage({
   const session = await getSession()
   if (!session) redirect('/login')
   if (session.role !== 'leader') redirect('/request')
+
+  const sessionPayload = await getSessionPayload()
+  const storeCount = sessionPayload?.memberships.length ?? 0
 
   const sp = await searchParams
   const targetMonthFromYm =
@@ -157,6 +160,7 @@ export default async function SchedulePage({
   return (
     <ScheduleClient
       session={session}
+      storeCount={storeCount}
       storeName={storeRow?.store_name?.trim() || '店舗'}
       staff={staff}
       settings={shiftSettings}
