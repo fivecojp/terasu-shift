@@ -83,11 +83,10 @@ export async function POST(request: Request) {
     .from('memberships')
     .select('store_id, role, stores(store_name)')
     .eq('staff_id', staff.staff_id)
-    .eq('display_status', 'visible')
 
   if (memError || !rows?.length) {
     return NextResponse.json(
-      { error: '表示可能な店舗への所属がありません' },
+      { error: '店舗への所属がありません' },
       { status: 403 }
     )
   }

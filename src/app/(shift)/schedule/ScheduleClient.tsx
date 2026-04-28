@@ -181,6 +181,14 @@ export function ScheduleClient(init: Props) {
               <span className="text-sm text-zinc-600">
                 担当: {session.staff_name}
               </span>
+              {session.role === 'leader' ? (
+                <Link
+                  href="/settings"
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
+                >
+                  設定
+                </Link>
+              ) : null}
               <button
                 type="button"
                 className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
