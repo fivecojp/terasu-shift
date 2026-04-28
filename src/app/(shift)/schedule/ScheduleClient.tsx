@@ -228,36 +228,36 @@ export function ScheduleClient(init: Props) {
   return (
     <div className="min-h-full bg-zinc-50 pb-24">
       {/* PC（lg以上） */}
-      <header className="sticky top-0 z-10 hidden border-b border-zinc-200 bg-white shadow-sm lg:block">
-        <div className="flex items-center gap-3 px-4 py-2.5">
-          <span className="shrink-0 text-base font-bold text-zinc-900">
-            {storeName}
-          </span>
-          <span className="shrink-0 text-zinc-200" aria-hidden>
-            |
-          </span>
-          <span className="shrink-0 text-sm text-zinc-500">{staffName}</span>
+      <header className="sticky top-0 z-10 hidden border-b border-zinc-100 bg-white/95 backdrop-blur-sm shadow-sm lg:block">
+        <div className="flex items-center gap-2 px-4 py-2">
+          <div className="flex shrink-0 items-center gap-2 rounded-md bg-zinc-50 px-3 py-1">
+            <span className="text-sm font-bold text-zinc-900">{storeName}</span>
+            <span className="text-zinc-300" aria-hidden>
+              ·
+            </span>
+            <span className="text-xs text-zinc-500">{staffName}</span>
+          </div>
 
-          <div className="ml-4 flex shrink-0 items-center gap-1">
+          <div className="ml-2 flex shrink-0 items-center gap-1">
             <Link
               href={prevPath}
-              className="flex h-7 w-7 items-center justify-center rounded border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50 transition-colors"
             >
               ‹
             </Link>
-            <span className="min-w-[6rem] text-center text-sm font-semibold text-zinc-800">
+            <span className="min-w-[6rem] text-center text-sm font-semibold text-zinc-700">
               {viewRange.viewLabel}
             </span>
             <Link
               href={nextPath}
-              className="flex h-7 w-7 items-center justify-center rounded border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50 transition-colors"
             >
               ›
             </Link>
           </div>
 
           <select
-            className="rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-700 focus:outline-none"
+            className="rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-700 hover:border-zinc-300 focus:outline-none focus:ring-1 focus:ring-slate-400 transition-colors"
             value={kindToViewSpan(scheduleViewKind)}
             onChange={(e) => {
               const nextKind = viewSpanToKind(e.target.value as ViewSpan)
@@ -271,13 +271,13 @@ export function ScheduleClient(init: Props) {
           </select>
 
           {role === 'leader' ? (
-            <div className="flex shrink-0 overflow-hidden rounded border border-zinc-300">
+            <div className="flex shrink-0 overflow-hidden rounded-md border border-zinc-200 bg-zinc-50">
               <button
                 type="button"
-                className={`px-3 py-1.5 text-sm ${
+                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                   viewMode === 'request'
-                    ? 'bg-slate-700 font-semibold text-white'
-                    : 'bg-white text-zinc-600 hover:bg-zinc-50'
+                    ? 'bg-slate-700 text-white'
+                    : 'text-zinc-500 hover:text-zinc-700 hover:bg-white'
                 }`}
                 onClick={() => setViewMode('request')}
               >
@@ -285,10 +285,10 @@ export function ScheduleClient(init: Props) {
               </button>
               <button
                 type="button"
-                className={`border-l border-zinc-300 px-3 py-1.5 text-sm ${
+                className={`border-l border-zinc-200 px-3 py-1.5 text-sm font-medium transition-colors ${
                   viewMode === 'shift'
-                    ? 'bg-slate-700 font-semibold text-white'
-                    : 'bg-white text-zinc-600 hover:bg-zinc-50'
+                    ? 'bg-slate-700 text-white'
+                    : 'text-zinc-500 hover:text-zinc-700 hover:bg-white'
                 }`}
                 onClick={() => setViewMode('shift')}
               >
@@ -301,7 +301,7 @@ export function ScheduleClient(init: Props) {
             {role === 'leader' ? (
               <>
                 <span
-                  className={`text-sm font-medium ${
+                  className={`text-xs font-medium ${
                     publishStatus === 'published'
                       ? 'text-emerald-600'
                       : 'text-amber-600'
@@ -312,7 +312,7 @@ export function ScheduleClient(init: Props) {
                 {publishStatus === 'draft' ? (
                   <button
                     type="button"
-                    className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
+                    className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
                     onClick={() => void onPublish()}
                   >
                     公開する
@@ -320,7 +320,7 @@ export function ScheduleClient(init: Props) {
                 ) : null}
                 <button
                   type="button"
-                  className="rounded border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+                  className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50 hover:border-zinc-300 transition-colors"
                   onClick={() => void handleCsvExport()}
                 >
                   CSVエクスポート
@@ -330,14 +330,14 @@ export function ScheduleClient(init: Props) {
 
             <Link
               href="/request"
-              className="whitespace-nowrap rounded border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+              className="whitespace-nowrap rounded-md border border-zinc-200 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50 hover:border-zinc-300 transition-colors"
             >
               希望シフト提出
             </Link>
             {role === 'leader' ? (
               <Link
                 href="/settings"
-                className="rounded border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+                className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50 hover:border-zinc-300 transition-colors"
               >
                 設定
               </Link>
@@ -345,14 +345,14 @@ export function ScheduleClient(init: Props) {
             {storeCount >= 2 ? (
               <Link
                 href="/login/select-store"
-                className="whitespace-nowrap rounded border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+                className="whitespace-nowrap rounded-md border border-zinc-200 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50 hover:border-zinc-300 transition-colors"
               >
                 店舗切替
               </Link>
             ) : null}
             <button
               type="button"
-              className="text-sm text-zinc-400 underline hover:text-zinc-600"
+              className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
               onClick={() => void handleLogout()}
             >
               ログアウト
@@ -362,11 +362,11 @@ export function ScheduleClient(init: Props) {
       </header>
 
       {/* スマホ・タブレット（lg未満） */}
-      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white shadow-sm lg:hidden">
-        <div className="flex items-center gap-2 px-3 py-2">
+      <header className="sticky top-0 z-10 border-b border-zinc-100 bg-white/95 backdrop-blur-sm shadow-sm lg:hidden">
+        <div className="flex items-center gap-1.5 px-3 py-2">
           <button
             type="button"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-zinc-300 text-zinc-600 hover:bg-zinc-50"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 transition-colors"
             aria-label="メニュー"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
@@ -376,22 +376,22 @@ export function ScheduleClient(init: Props) {
 
           <Link
             href={prevPath}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50 transition-colors"
           >
             ‹
           </Link>
-          <span className="min-w-[5rem] shrink-0 whitespace-nowrap text-center text-xs font-semibold text-zinc-800">
+          <span className="min-w-[5rem] shrink-0 whitespace-nowrap text-center text-xs font-semibold text-zinc-700">
             {viewRange.viewLabel}
           </span>
           <Link
             href={nextPath}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50 transition-colors"
           >
             ›
           </Link>
 
           <select
-            className="shrink-0 rounded border border-zinc-300 bg-white px-1.5 py-1 text-xs text-zinc-700 focus:outline-none"
+            className="shrink-0 rounded-md border border-zinc-200 bg-white px-1.5 py-1 text-xs text-zinc-700 focus:outline-none"
             value={kindToViewSpan(scheduleViewKind)}
             onChange={(e) => {
               const nextKind = viewSpanToKind(e.target.value as ViewSpan)
@@ -405,13 +405,13 @@ export function ScheduleClient(init: Props) {
           </select>
 
           {role === 'leader' ? (
-            <div className="flex shrink-0 overflow-hidden rounded border border-zinc-300">
+            <div className="flex shrink-0 overflow-hidden rounded-md border border-zinc-200 bg-zinc-50">
               <button
                 type="button"
-                className={`px-2 py-1 text-xs ${
+                className={`px-2 py-1 text-xs font-medium transition-colors ${
                   viewMode === 'request'
-                    ? 'bg-slate-700 font-semibold text-white'
-                    : 'bg-white text-zinc-600 hover:bg-zinc-50'
+                    ? 'bg-slate-700 text-white'
+                    : 'text-zinc-500 hover:bg-white'
                 }`}
                 onClick={() => setViewMode('request')}
               >
@@ -419,10 +419,10 @@ export function ScheduleClient(init: Props) {
               </button>
               <button
                 type="button"
-                className={`border-l border-zinc-300 px-2 py-1 text-xs ${
+                className={`border-l border-zinc-200 px-2 py-1 text-xs font-medium transition-colors ${
                   viewMode === 'shift'
-                    ? 'bg-slate-700 font-semibold text-white'
-                    : 'bg-white text-zinc-600 hover:bg-zinc-50'
+                    ? 'bg-slate-700 text-white'
+                    : 'text-zinc-500 hover:bg-white'
                 }`}
                 onClick={() => setViewMode('shift')}
               >
@@ -434,14 +434,14 @@ export function ScheduleClient(init: Props) {
           {role === 'leader' && publishStatus === 'draft' ? (
             <button
               type="button"
-              className="ml-auto shrink-0 rounded bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+              className="ml-auto shrink-0 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors"
               onClick={() => void onPublish()}
             >
               公開
             </button>
           ) : null}
           {role === 'leader' && publishStatus === 'published' ? (
-            <span className="ml-auto shrink-0 text-xs font-medium text-emerald-600">
+            <span className="ml-auto shrink-0 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
               公開済
             </span>
           ) : null}
@@ -454,14 +454,14 @@ export function ScheduleClient(init: Props) {
               aria-hidden
               onClick={() => setMenuOpen(false)}
             />
-            <div className="absolute left-0 top-full z-20 w-56 rounded-b-lg border border-zinc-200 bg-white py-1 shadow-lg">
-              <div className="border-b border-zinc-100 px-4 py-2">
-                <p className="text-xs font-semibold text-zinc-800">{storeName}</p>
-                <p className="text-xs text-zinc-500">{staffName}</p>
+            <div className="absolute left-0 top-full z-20 w-56 rounded-b-xl border border-zinc-100 bg-white py-1 shadow-xl">
+              <div className="border-b border-zinc-100 bg-zinc-50 px-4 py-3">
+                <p className="text-xs font-bold text-zinc-900">{storeName}</p>
+                <p className="mt-0.5 text-xs text-zinc-500">{staffName}</p>
               </div>
               <Link
                 href="/request"
-                className="flex items-center px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50"
+                className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors"
                 onClick={() => setMenuOpen(false)}
               >
                 希望シフト提出
@@ -470,14 +470,14 @@ export function ScheduleClient(init: Props) {
                 <>
                   <Link
                     href="/settings"
-                    className="flex items-center px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors"
                     onClick={() => setMenuOpen(false)}
                   >
                     設定
                   </Link>
                   <button
                     type="button"
-                    className="flex w-full items-center px-4 py-3 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-zinc-50 transition-colors"
                     onClick={() => {
                       setMenuOpen(false)
                       handleCsvExport()
@@ -490,7 +490,7 @@ export function ScheduleClient(init: Props) {
               {storeCount >= 2 ? (
                 <Link
                   href="/login/select-store"
-                  className="flex items-center px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50"
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors"
                   onClick={() => setMenuOpen(false)}
                 >
                   店舗切り替え
@@ -499,7 +499,7 @@ export function ScheduleClient(init: Props) {
               <hr className="my-1 border-zinc-100" />
               <button
                 type="button"
-                className="flex w-full items-center px-4 py-3 text-left text-sm text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600"
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600 transition-colors"
                 onClick={() => {
                   setMenuOpen(false)
                   handleLogout()
