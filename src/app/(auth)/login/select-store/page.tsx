@@ -1,15 +1,12 @@
 import { redirect } from 'next/navigation'
-import { getSessionPayload, homePathFromPayload } from '@/lib/auth'
+import { getSessionPayload } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/service'
 import { SelectStoreForm } from './SelectStoreForm'
 
 export default async function SelectStorePage() {
   const payload = await getSessionPayload()
   if (!payload) redirect('/login')
-  if (payload.active_store_id) {
-    const path = homePathFromPayload(payload)
-    redirect(path ?? '/login')
-  }
+  // active_store_id がある場合も店舗切り替えのためこのページを表示する
 
   const ids = [...new Set(payload.memberships.map((m) => m.store_id))]
   const supabase = createServiceClient()
