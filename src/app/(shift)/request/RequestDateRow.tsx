@@ -34,13 +34,13 @@ function selectValueFromRow(r: RowVals): string {
 }
 
 const BTN_ON =
-  'rounded-md bg-slate-700 px-2.5 py-1 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40'
+  'whitespace-nowrap rounded-md bg-slate-700 px-2.5 py-1 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40'
 const BTN_OFF =
-  'rounded-md border border-zinc-200 px-2.5 py-1 text-xs text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40'
+  'whitespace-nowrap rounded-md border border-zinc-200 px-2.5 py-1 text-xs text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40'
 const BTN_OFF_SEL =
-  'rounded-md bg-rose-600 px-2.5 py-1 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40'
+  'whitespace-nowrap rounded-md bg-rose-600 px-2.5 py-1 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40'
 const BTN_OFF_UNSEL =
-  'rounded-md border border-zinc-200 px-2.5 py-1 text-xs text-zinc-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40'
+  'whitespace-nowrap rounded-md border border-zinc-200 px-2.5 py-1 text-xs text-zinc-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40'
 
 export function RequestDateRow({
   dateYmd,
@@ -113,7 +113,7 @@ export function RequestDateRow({
         <div
           role="group"
           aria-label={labelText}
-          className="flex flex-wrap gap-1.5"
+          className="flex flex-wrap items-center gap-1.5"
         >
           {patterns.map((p) => {
             const active =

@@ -465,7 +465,7 @@ export function RequestShiftClient(props: Props) {
           <p className="text-sm text-amber-800">この月に表示できる週がありません。</p>
         ) : (
           <select
-            className="min-h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-700 focus:outline-none focus:ring-1 focus:ring-slate-400 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             value={
               periodSel.kind === 'weekly'
                 ? periodSel.weekId
@@ -499,7 +499,7 @@ export function RequestShiftClient(props: Props) {
           <p className="text-sm text-amber-800">この月に表示できる2週ブロックがありません。</p>
         ) : (
           <select
-            className="min-h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-700 focus:outline-none focus:ring-1 focus:ring-slate-400 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             value={
               periodSel.kind === 'biweekly'
                 ? periodSel.biweekId
@@ -545,7 +545,7 @@ export function RequestShiftClient(props: Props) {
     <div className="flex min-h-full flex-col bg-zinc-50 pb-24">
       <header className="sticky top-0 z-10 border-b border-zinc-100 bg-white/95 backdrop-blur-sm shadow-sm">
         {!headerExpanded ? (
-          <div className="mx-auto flex w-full max-w-lg items-start justify-between gap-2 px-4 py-2">
+          <div className="mx-auto flex w-full max-w-lg items-center justify-between gap-2 px-4 py-2">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-zinc-800">
                 {monthSummaryLabel} · {periodSummaryLabel}
@@ -580,7 +580,7 @@ export function RequestShiftClient(props: Props) {
                       : `期間開始日の ${settings.deadline_value} か月前まで`}
                 </p>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-2 text-right sm:flex-row sm:items-center">
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 text-right">
                 <div className="text-sm">
                   <p className="text-xs text-zinc-500">ログイン中</p>
                   <p className="font-medium text-zinc-900">{session.staff_name}</p>
