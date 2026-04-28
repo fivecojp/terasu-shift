@@ -384,11 +384,11 @@ export function RequestShiftClient(props: Props) {
   const [headerExpanded, setHeaderExpanded] = useState(false)
 
   const halfBtnActive =
-    'min-h-10 flex-none rounded-lg px-4 py-2 text-sm font-semibold bg-slate-700 text-white ring-2 ring-slate-400 ring-offset-1'
+    'rounded-md bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors'
   const halfBtnInactive =
-    'min-h-10 flex-none rounded-lg border-2 border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-500 hover:border-zinc-400'
+    'rounded-md border border-zinc-200 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
   const halfBtnExpired =
-    'min-h-10 flex-none cursor-not-allowed rounded-lg border-2 border-zinc-200 bg-zinc-100 px-4 py-2 text-sm text-zinc-300 opacity-50'
+    'rounded-md border border-zinc-200 px-3 py-1.5 text-xs text-zinc-400 cursor-not-allowed opacity-40'
 
   const periodControl =
     settings.shift_cycle === 'monthly' ? (
@@ -465,7 +465,7 @@ export function RequestShiftClient(props: Props) {
           <p className="text-sm text-amber-800">この月に表示できる週がありません。</p>
         ) : (
           <select
-            className="min-h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
             value={
               periodSel.kind === 'weekly'
                 ? periodSel.weekId
@@ -499,7 +499,7 @@ export function RequestShiftClient(props: Props) {
           <p className="text-sm text-amber-800">この月に表示できる2週ブロックがありません。</p>
         ) : (
           <select
-            className="min-h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
             value={
               periodSel.kind === 'biweekly'
                 ? periodSel.biweekId
@@ -529,11 +529,11 @@ export function RequestShiftClient(props: Props) {
     ) : null
 
   const MONTH_NAV_ACTIVE =
-    'min-w-[5rem] rounded-lg px-5 py-2.5 text-sm font-semibold bg-slate-700 text-white ring-2 ring-slate-400 ring-offset-1'
+    'rounded-md bg-slate-700 px-4 py-1.5 text-sm font-semibold text-white transition-colors'
   const MONTH_NAV_INACTIVE =
-    'min-w-[5rem] rounded-lg px-5 py-2.5 text-sm bg-white border-2 border-zinc-300 text-zinc-500 hover:border-zinc-400'
+    'rounded-md border border-zinc-200 px-4 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
   const MONTH_NAV_EXPIRED =
-    'min-w-[5rem] rounded-lg px-5 py-2.5 text-sm bg-zinc-100 border-2 border-zinc-200 text-zinc-300 cursor-not-allowed'
+    'rounded-md border border-zinc-200 px-4 py-1.5 text-sm text-zinc-400 cursor-not-allowed opacity-40'
 
   function monthNavClass(active: boolean, expired: boolean): string {
     if (expired) return MONTH_NAV_EXPIRED
@@ -542,8 +542,8 @@ export function RequestShiftClient(props: Props) {
   }
 
   return (
-    <div className="flex flex-col bg-zinc-50">
-      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white shadow-sm">
+    <div className="flex min-h-full flex-col bg-zinc-50 pb-24">
+      <header className="sticky top-0 z-10 border-b border-zinc-100 bg-white/95 backdrop-blur-sm shadow-sm">
         {!headerExpanded ? (
           <div className="mx-auto flex w-full max-w-lg items-start justify-between gap-2 px-4 py-2">
             <div className="min-w-0 flex-1">
@@ -556,7 +556,7 @@ export function RequestShiftClient(props: Props) {
             </div>
             <button
               type="button"
-              className="shrink-0 px-2 py-1 text-xs text-zinc-400 hover:text-zinc-600"
+              className="shrink-0 rounded-md px-2 py-1 text-xs text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-600"
               onClick={() => setHeaderExpanded(true)}
             >
               ▼ 設定を表示
@@ -566,11 +566,13 @@ export function RequestShiftClient(props: Props) {
           <div className="mx-auto flex w-full max-w-lg flex-col gap-3 px-4 py-2">
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate text-xs text-zinc-500">締め切り</p>
-                <p className="text-base font-bold text-rose-600">
+                <p className="truncate text-xs font-medium text-zinc-500">
+                  締め切り
+                </p>
+                <p className="text-sm font-bold text-rose-600">
                   {formatJaLong(deadlineYmd)}
                 </p>
-                <p className="mt-1 text-xs text-zinc-400">
+                <p className="mt-0.5 text-xs text-zinc-400">
                   {settings.deadline_type === 'days_before'
                     ? `期間開始日の ${settings.deadline_value} 日前まで`
                     : settings.deadline_type === 'weeks_before'
@@ -586,20 +588,20 @@ export function RequestShiftClient(props: Props) {
                 {storeCount >= 2 ? (
                   <Link
                     href="/login/select-store"
-                    className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+                    className="rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
                   >
                     店舗切り替え
                   </Link>
                 ) : null}
                 <Link
                   href="/schedule"
-                  className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+                  className="rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
                 >
                   シフト表へ
                 </Link>
                 <button
                   type="button"
-                  className="text-sm text-zinc-400 underline hover:text-zinc-600"
+                  className="text-xs text-zinc-400 transition-colors hover:text-zinc-600"
                   onClick={() => void logoutAndRedirectToLogin()}
                 >
                   ログアウト
@@ -634,7 +636,7 @@ export function RequestShiftClient(props: Props) {
 
             <button
               type="button"
-              className="w-full rounded-lg border border-zinc-300 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
+              className="w-full rounded-md border border-zinc-200 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-50"
               onClick={() => setHeaderExpanded(false)}
             >
               ▲ 設定を閉じる
@@ -643,19 +645,12 @@ export function RequestShiftClient(props: Props) {
         )}
       </header>
 
-      <main className="mx-auto w-full max-w-lg px-4 pb-8 pt-0">
-        <h2 className="px-0 pb-2 pt-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
-          希望シフト
-        </h2>
+      <main className="mx-auto w-full max-w-lg px-3 py-4">
+        <h2 className="mb-2 text-sm font-semibold text-zinc-700">希望シフト</h2>
 
         {noSubmitPeriodAvailable ? (
-          <div className="mx-4 my-6 rounded-lg border border-zinc-200 bg-zinc-100 p-4 text-center">
-            <p className="text-sm font-semibold text-zinc-600">
-              現在提出できる期間がありません
-            </p>
-            <p className="mt-1 text-xs text-zinc-400">
-              次の締切をお待ちください
-            </p>
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-6 text-center">
+            <p className="text-sm text-zinc-500">現在提出できる期間がありません</p>
           </div>
         ) : null}
 
@@ -732,7 +727,7 @@ export function RequestShiftClient(props: Props) {
           <div className="mt-6 pb-4">
             <button
               type="button"
-              className="w-full rounded-lg bg-slate-700 py-3 text-base font-semibold tracking-wide text-white hover:bg-slate-800 disabled:opacity-40"
+              className="w-full rounded-lg bg-slate-700 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={
                 (!!isSubmitted && !editing) ||
                 workDates.length === 0 ||

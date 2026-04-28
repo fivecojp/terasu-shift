@@ -33,6 +33,15 @@ function selectValueFromRow(r: RowVals): string {
   return 'custom'
 }
 
+const BTN_ON =
+  'rounded-md bg-slate-700 px-2.5 py-1 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40'
+const BTN_OFF =
+  'rounded-md border border-zinc-200 px-2.5 py-1 text-xs text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40'
+const BTN_OFF_SEL =
+  'rounded-md bg-rose-600 px-2.5 py-1 text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40'
+const BTN_OFF_UNSEL =
+  'rounded-md border border-zinc-200 px-2.5 py-1 text-xs text-zinc-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40'
+
 export function RequestDateRow({
   dateYmd,
   labelText,
@@ -47,17 +56,11 @@ export function RequestDateRow({
   const md = `${d.getMonth() + 1}/${d.getDate()}`
   const wdl = WD[d.getDay()]
   const dateNumClass =
-    tone === 'sat'
-      ? 'text-sm font-semibold text-sky-700'
-      : tone === 'sunh'
-        ? 'text-sm font-semibold text-rose-600'
-        : 'text-sm font-semibold text-zinc-800'
+    tone === 'sunh'
+      ? 'text-sm font-semibold text-rose-600'
+      : 'text-sm font-semibold text-zinc-900'
   const wdClass =
-    tone === 'sat'
-      ? 'text-xs text-sky-500'
-      : tone === 'sunh'
-        ? 'text-xs text-rose-400'
-        : 'text-xs text-zinc-400'
+    tone === 'sunh' ? 'text-xs text-rose-500' : 'text-xs text-zinc-500'
 
   const sel = selectValueFromRow(row)
 
@@ -97,10 +100,8 @@ export function RequestDateRow({
     })
   }
 
-  const selectClass =
-    'min-h-10 min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400'
   const customSelectClass =
-    'min-h-9 min-w-0 rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400'
+    'min-h-9 min-w-0 rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-40'
 
   return (
     <div className="flex items-center gap-3 border-b border-zinc-100 bg-white px-4 py-2">
@@ -109,44 +110,51 @@ export function RequestDateRow({
         <span className={wdClass}>{wdl}</span>
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <label className="sr-only" htmlFor={`req-${dateYmd}`}>
-          {labelText}
-        </label>
-        <select
-          id={`req-${dateYmd}`}
-          className={selectClass}
-          disabled={disabled}
-          value={
-            sel === 'custom' && !halfOpts.length
-              ? patterns[0]
-                ? `p:${patterns[0].shift_pattern_id}`
-                : 'off'
-              : sel
-          }
-          onChange={(e) => onSelectChange(e.target.value)}
+        <div
+          role="group"
+          aria-label={labelText}
+          className="flex flex-wrap gap-1.5"
         >
-          <optgroup label="パターン">
-            {patterns.length === 0 ? (
-              <option value="_none" disabled>
-                （パターン未登録）
-              </option>
-            ) : (
-              patterns.map((p) => (
-                <option
-                  key={p.shift_pattern_id}
-                  value={`p:${p.shift_pattern_id}`}
-                >
-                  {p.pattern_name}
-                </option>
-              ))
-            )}
-          </optgroup>
-          <option value="free">F（終日）</option>
-          <option value="off">×（休み）</option>
-          <option value="custom" disabled={!halfOpts.length}>
+          {patterns.map((p) => {
+            const active =
+              row.mode === 'pattern' && row.patternId === p.shift_pattern_id
+            return (
+              <button
+                key={p.shift_pattern_id}
+                type="button"
+                disabled={disabled}
+                className={active ? BTN_ON : BTN_OFF}
+                onClick={() => onSelectChange(`p:${p.shift_pattern_id}`)}
+              >
+                {p.pattern_name}
+              </button>
+            )
+          })}
+          <button
+            type="button"
+            disabled={disabled}
+            className={sel === 'free' ? BTN_ON : BTN_OFF}
+            onClick={() => onSelectChange('free')}
+          >
+            F（終日）
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            className={sel === 'off' ? BTN_OFF_SEL : BTN_OFF_UNSEL}
+            onClick={() => onSelectChange('off')}
+          >
+            ×（休み）
+          </button>
+          <button
+            type="button"
+            disabled={disabled || !halfOpts.length}
+            className={sel === 'custom' ? BTN_ON : BTN_OFF}
+            onClick={() => onSelectChange('custom')}
+          >
             その他（時間入力）
-          </option>
-        </select>
+          </button>
+        </div>
 
         {row.mode === 'custom' ? (
           <div className="flex flex-wrap items-center gap-2">
