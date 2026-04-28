@@ -38,12 +38,16 @@ export default async function SchedulePage({
   const targetMonthFromYm =
     ymParamToTargetFirst(sp.ym ?? null) ?? defaultTargetMonth()
 
+  const scheduleViewKind = parseScheduleViewKind(sp.view) ?? 'monthly'
+
+  /** start 未指定時は月次のみ月初基準。週・半月などは今日を含む窓にする */
+  const todayYmd = new Date().toLocaleDateString('sv-SE')
   const startStr =
     typeof sp.start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sp.start)
       ? sp.start
-      : targetMonthFromYm
-
-  const scheduleViewKind = parseScheduleViewKind(sp.view) ?? 'monthly'
+      : scheduleViewKind === 'monthly'
+        ? targetMonthFromYm
+        : todayYmd
   const viewRange = calcViewRange(startStr, scheduleViewKind)
   const fetchStart = viewRange.dates[0] ?? startStr
   const fetchEnd =

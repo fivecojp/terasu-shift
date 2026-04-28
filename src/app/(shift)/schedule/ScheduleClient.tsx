@@ -147,6 +147,19 @@ export function ScheduleClient(init: Props) {
     setGanttWorkDate(workDate)
   }, [])
 
+  const handleViewKindChange = useCallback(
+    (nextKind: ScheduleViewKind) => {
+      if (nextKind === 'monthly') {
+        const monthStart = `${viewStartYmd.slice(0, 7)}-01`
+        router.push(buildSchedulePath(monthStart, nextKind))
+        return
+      }
+      const todayYmd = new Date().toLocaleDateString('sv-SE')
+      router.push(buildSchedulePath(todayYmd, nextKind))
+    },
+    [router, viewStartYmd]
+  )
+
   async function onPublish() {
     if (!periodStart || !periodEnd) return
     const r = await publishSchedulePeriod({
@@ -236,7 +249,7 @@ export function ScheduleClient(init: Props) {
               value={kindToViewSpan(scheduleViewKind)}
               onChange={(e) => {
                 const nextKind = viewSpanToKind(e.target.value as ViewSpan)
-                router.push(buildSchedulePath(viewStartYmd, nextKind))
+                handleViewKindChange(nextKind)
               }}
             >
               <option value="1w">{viewSpanLabel('1w')}</option>
