@@ -450,11 +450,11 @@ export function ScheduleClient(init: Props) {
         {menuOpen ? (
           <>
             <div
-              className="fixed inset-0 z-10"
+              className="fixed inset-0 z-40"
               aria-hidden
               onClick={() => setMenuOpen(false)}
             />
-            <div className="absolute left-0 top-full z-20 w-56 rounded-b-xl border border-zinc-100 bg-white py-1 shadow-xl">
+            <div className="absolute left-0 top-full z-50 w-56 rounded-b-xl border border-zinc-100 bg-white py-1 shadow-xl">
               <div className="border-b border-zinc-100 bg-zinc-50 px-4 py-3">
                 <p className="text-xs font-bold text-zinc-900">{storeName}</p>
                 <p className="mt-0.5 text-xs text-zinc-500">{staffName}</p>
