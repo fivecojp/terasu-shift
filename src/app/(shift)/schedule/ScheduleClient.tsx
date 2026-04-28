@@ -430,21 +430,6 @@ export function ScheduleClient(init: Props) {
               </button>
             </div>
           ) : null}
-
-          {role === 'leader' && publishStatus === 'draft' ? (
-            <button
-              type="button"
-              className="ml-auto shrink-0 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors"
-              onClick={() => void onPublish()}
-            >
-              公開
-            </button>
-          ) : null}
-          {role === 'leader' && publishStatus === 'published' ? (
-            <span className="ml-auto shrink-0 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-              公開済
-            </span>
-          ) : null}
         </div>
 
         {menuOpen ? (
@@ -468,6 +453,19 @@ export function ScheduleClient(init: Props) {
               </Link>
               {role === 'leader' ? (
                 <>
+                  {publishStatus === 'draft' ? (
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-zinc-50 transition-colors"
+                      onClick={() => void onPublish()}
+                    >
+                      公開する
+                    </button>
+                  ) : (
+                    <div className="px-4 py-2.5 text-sm font-medium text-emerald-600">
+                      {publishLabelPc}
+                    </div>
+                  )}
                   <Link
                     href="/settings"
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors"
