@@ -19,7 +19,6 @@ import {
   pairBiweeklySlices,
   parseYmd,
   periodSelEquals,
-  resolveDefaultRequestMonthAndPeriod,
   resolveGridForSelection,
   type PeriodDeadlineInfo,
   type PeriodSel,
@@ -152,16 +151,6 @@ export function RequestShiftClient(props: Props) {
 
   const targetMonthFirstYm0 = `${ym0}-01`
   const targetMonthFirstYm1 = `${ym1}-01`
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const q = new URLSearchParams(window.location.search)
-    if (q.get('ym')) return
-    const preferred = resolveDefaultRequestMonthAndPeriod(settings, todayStr)
-    if (preferred.targetMonthFirst !== targetMonthFirst) {
-      router.replace(`/request?ym=${preferred.targetMonthFirst.slice(0, 7)}`)
-    }
-  }, [router, settings, targetMonthFirst, todayStr])
 
   const month0HasOpen = monthHasAnyOpenPeriod(
     targetMonthFirstYm0,

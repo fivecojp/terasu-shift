@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
 import { getSession, getSessionPayload } from '@/lib/auth'
 import {
-  defaultTargetMonth,
   monthRangeInclusive,
+  resolveDefaultRequestMonthAndPeriod,
   ymParamToTargetFirst,
 } from '@/lib/shift-request-periods'
 import { ensureShiftSettingsForStore } from '@/lib/shift-settings-ensure'
@@ -35,7 +35,16 @@ export default async function RequestPage({
 
   const sp = await searchParams
   const ymFromQuery = ymParamToTargetFirst(sp.ym ?? null)
-  const targetMonthFirst = ymFromQuery ?? defaultTargetMonth()
+  if (!ymFromQuery) {
+    const todayYmdJst = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Asia/Tokyo',
+    })
+      .format(new Date())
+      .slice(0, 10)
+    const resolved = resolveDefaultRequestMonthAndPeriod(settingsRow, todayYmdJst)
+    redirect(`/request?ym=${resolved.targetMonthFirst.slice(0, 7)}`)
+  }
+  const targetMonthFirst = ymFromQuery
 
   const { startYmd: holStart, endYmd: holEnd } = monthRangeInclusive(
     targetMonthFirst
