@@ -77,20 +77,22 @@ export function ScheduleGrid({
   onPickCell,
 }: Props) {
   const todayStr = new Date().toLocaleDateString('sv-SE')
-  const todayRef = useRef<HTMLTableCellElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const todayColIndex = columnDates.indexOf(todayStr)
 
   useEffect(() => {
-    if (todayRef.current) {
-      todayRef.current.scrollIntoView({
-        behavior: 'instant',
-        block: 'nearest',
-        inline: 'center',
-      })
-    }
-  }, [columnDates])
+    if (scrollRef.current === null || todayColIndex < 0) return
+    const container = scrollRef.current
+    const STAFF_COL_WIDTH = 128 // スタッフ列幅(px) 8rem想定
+    const DATE_COL_WIDTH = 44 // 日付列幅(px) 2.75rem想定
+    const todayLeft = STAFF_COL_WIDTH + todayColIndex * DATE_COL_WIDTH
+    const containerWidth = container.clientWidth
+    const targetScrollLeft = todayLeft - containerWidth / 2 + DATE_COL_WIDTH / 2
+    container.scrollLeft = Math.max(0, targetScrollLeft)
+  }, [columnDates, todayColIndex])
 
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-zinc-200 shadow-sm">
+    <div ref={scrollRef} className="w-full overflow-x-auto rounded-lg border border-zinc-200 shadow-sm">
       <div className="w-full min-w-fit">
         <table
           className="w-full border-collapse text-sm"
@@ -129,7 +131,6 @@ export function ScheduleGrid({
                 return (
                   <th
                     key={d}
-                    ref={isToday ? todayRef : undefined}
                     className={`sticky top-0 z-20 border-b border-r border-zinc-100 bg-zinc-50 px-1 py-1.5 text-center text-xs font-medium whitespace-pre-line ${tone}`}
                     style={{ willChange: 'transform' }}
                   >
