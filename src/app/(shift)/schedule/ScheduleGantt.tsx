@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type {
   Shift,
   ShiftPattern,
@@ -59,6 +59,21 @@ export function ScheduleGantt({
   const gs = settings.gantt_start_minutes
   const ge = settings.gantt_end_minutes
   const span = ge - gs
+
+  const hourTicks = useMemo(() => {
+    if (ge <= gs) return []
+    const ticks: { minutes: number; label: string; left: string }[] = []
+    const firstHour = Math.ceil(gs / 60) * 60
+    for (let m = firstHour; m <= ge; m += 60) {
+      const left = ((m - gs) / (ge - gs)) * 100
+      ticks.push({
+        minutes: m,
+        label: minutesToDisplay(m),
+        left: `${left}%`,
+      })
+    }
+    return ticks
+  }, [gs, ge])
 
   const tracks = useRef<Map<string, HTMLDivElement>>(new Map())
   const setTrack = (id: string, el: HTMLDivElement | null) => {
@@ -269,6 +284,20 @@ export function ScheduleGantt({
         緑＝確定バー（左右でリサイズ・中央で移動）。未登録の行はトラック本体をクリックで仮登録。薄ピンクは希望のみ参考です。
       </p>
       <div className="space-y-2">
+        <div className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-end gap-2">
+          <div aria-hidden className="min-h-6" />
+          <div className="relative h-6 border-b border-zinc-200 bg-zinc-50">
+            {hourTicks.map((tick) => (
+              <span
+                key={tick.minutes}
+                className="absolute top-0 -translate-x-1/2 text-[10px] text-zinc-400 select-none"
+                style={{ left: tick.left }}
+              >
+                {tick.label}
+              </span>
+            ))}
+          </div>
+        </div>
         {staffLines.map((s) => {
           const sh = shiftByStaff.get(s.staff_id)
           const { lo, hi } = rangeFor(s.staff_id, sh)
@@ -306,6 +335,13 @@ export function ScheduleGantt({
                 className="relative h-10 cursor-default rounded bg-zinc-100"
                 onClick={(e) => clickEmpty(s.staff_id, e)}
               >
+                {hourTicks.map((tick) => (
+                  <div
+                    key={tick.minutes}
+                    className="pointer-events-none absolute top-0 bottom-0 z-0 w-px bg-zinc-100"
+                    style={{ left: tick.left }}
+                  />
+                ))}
                 {rqLo !== null && rqHi !== null && rqHi > rqLo ? (
                   <div
                     className="pointer-events-none absolute top-1 bottom-1 rounded bg-rose-200/70"

@@ -5,8 +5,13 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import type { SessionUser } from '@/lib/auth'
 import {
-  columnDatesForView,
+  buildSchedulePath,
+  calcViewRange,
+  kindToViewSpan,
   viewSpanLabel,
+  viewSpanToKind,
+  uniqueTargetMonthFirstsInRange,
+  type ScheduleViewKind,
   type ViewSpan,
 } from '@/lib/schedule-view-range'
 import type { ShiftPattern } from '@/types/database'
@@ -26,14 +31,10 @@ import { ScheduleGantt } from '@/app/(shift)/schedule/ScheduleGantt'
 import { logoutAndRedirectToLogin } from '@/lib/logout-client'
 export type { StaffRow }
 
-function addMonthYm(ym: string, delta: number): string {
-  const [y, m] = ym.split('-').map(Number)
-  const d = new Date(y, m - 1 + delta, 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
 type Props = SchedulePageData & {
   session: SessionUser
+  viewStartYmd: string
+  scheduleViewKind: ScheduleViewKind
 }
 
 export function ScheduleClient(init: Props) {
@@ -48,11 +49,11 @@ export function ScheduleClient(init: Props) {
     requests,
     publishRows,
     holidays,
-    targetMonthFirst,
     ymQuery,
+    viewStartYmd,
+    scheduleViewKind,
   } = init
 
-  const [span, setSpan] = useState<ViewSpan>('1m')
   const [mode, setMode] = useState<'request' | 'shift'>('request')
   const [ganttWorkDate, setGanttWorkDate] = useState<string | null>(null)
 
@@ -70,10 +71,11 @@ export function ScheduleClient(init: Props) {
   const shiftsKey = useMemo(() => buildKeyedShifts(shifts), [shifts])
   const requestsKey = useMemo(() => buildKeyedRequests(requests), [requests])
 
-  const columnDates = useMemo(
-    () => columnDatesForView(targetMonthFirst, span),
-    [span, targetMonthFirst]
+  const viewRange = useMemo(
+    () => calcViewRange(viewStartYmd, scheduleViewKind),
+    [scheduleViewKind, viewStartYmd]
   )
+  const columnDates = viewRange.dates
 
   const periodStart = columnDates[0]
   const periodEnd = columnDates[columnDates.length - 1]
@@ -86,17 +88,33 @@ export function ScheduleClient(init: Props) {
   }, [periodEnd, periodStart, publishRows])
 
   /** 対象月に希望が1件でもある staff_id（page 取得の staff は visible・退職日なしのみ） */
+  const monthsInView = useMemo(() => {
+    if (columnDates.length === 0) return []
+    return uniqueTargetMonthFirstsInRange(
+      columnDates[0],
+      columnDates[columnDates.length - 1]
+    )
+  }, [columnDates])
+
   const unsubmittedStaffIds = useMemo(() => {
-    const withRequest = new Set<string>()
+    if (monthsInView.length === 0) return new Set<string>()
+    const byStaff = new Map<string, Set<string>>()
     for (const r of requests) {
-      if (r.target_month === targetMonthFirst) withRequest.add(r.staff_id)
+      if (!monthsInView.includes(r.target_month)) continue
+      let got = byStaff.get(r.staff_id)
+      if (!got) {
+        got = new Set()
+        byStaff.set(r.staff_id, got)
+      }
+      got.add(r.target_month)
     }
     const ids = new Set<string>()
     for (const x of staff) {
-      if (!withRequest.has(x.staff_id)) ids.add(x.staff_id)
+      const got = byStaff.get(x.staff_id) ?? new Set<string>()
+      if (monthsInView.some((m) => !got.has(m))) ids.add(x.staff_id)
     }
     return ids
-  }, [requests, staff, targetMonthFirst])
+  }, [monthsInView, requests, staff])
 
   const requestByStaffForGantt = useMemo(() => {
     const m = new Map<string, import('@/types/database').ShiftRequest>()
@@ -168,9 +186,6 @@ export function ScheduleClient(init: Props) {
     router.refresh()
   }
 
-  const prevYm = addMonthYm(ymQuery, -1)
-  const nextYm = addMonthYm(ymQuery, 1)
-
   return (
     <div className="min-h-full bg-zinc-100 pb-24">
       <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white px-6 py-4 shadow-sm">
@@ -202,19 +217,22 @@ export function ScheduleClient(init: Props) {
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <Link
-                href={`/schedule?ym=${prevYm}`}
+                href={buildSchedulePath(
+                  viewRange.prevStart,
+                  scheduleViewKind
+                )}
                 className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm hover:bg-zinc-50"
               >
                 ＜
               </Link>
               <span className="font-mono text-sm font-medium text-zinc-900">
-                {(() => {
-                  const [yy, mm] = ymQuery.split('-')
-                  return `${yy}年${Number(mm)}月`
-                })()}
+                {viewRange.viewLabel}
               </span>
               <Link
-                href={`/schedule?ym=${nextYm}`}
+                href={buildSchedulePath(
+                  viewRange.nextStart,
+                  scheduleViewKind
+                )}
                 className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm hover:bg-zinc-50"
               >
                 ＞
@@ -225,8 +243,11 @@ export function ScheduleClient(init: Props) {
               <span className="text-zinc-500">表示幅</span>
               <select
                 className="rounded-lg border border-zinc-300 bg-white px-2 py-1.5"
-                value={span}
-                onChange={(e) => setSpan(e.target.value as ViewSpan)}
+                value={kindToViewSpan(scheduleViewKind)}
+                onChange={(e) => {
+                  const nextKind = viewSpanToKind(e.target.value as ViewSpan)
+                  router.push(buildSchedulePath(viewStartYmd, nextKind))
+                }}
               >
                 <option value="1w">{viewSpanLabel('1w')}</option>
                 <option value="2w">{viewSpanLabel('2w')}</option>
