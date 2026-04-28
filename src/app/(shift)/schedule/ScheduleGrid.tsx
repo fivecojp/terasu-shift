@@ -107,7 +107,10 @@ export function ScheduleGrid({
           </colgroup>
           <thead>
             <tr>
-              <th className="sticky left-0 top-0 z-30 border-b border-r border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold text-zinc-500 whitespace-nowrap after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-zinc-200">
+              <th
+                className="sticky left-0 top-0 z-30 border-b border-r border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-semibold text-zinc-500 whitespace-nowrap after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-zinc-200"
+                style={{ willChange: 'transform' }}
+              >
                 スタッフ
               </th>
               {columnDates.map((d) => {
@@ -128,6 +131,7 @@ export function ScheduleGrid({
                     key={d}
                     ref={isToday ? todayRef : undefined}
                     className={`sticky top-0 z-20 border-b border-r border-zinc-100 bg-zinc-50 px-1 py-1.5 text-center text-xs font-medium whitespace-pre-line ${tone}`}
+                    style={{ willChange: 'transform' }}
                   >
                     {labelDate(d)}
                   </th>
@@ -149,6 +153,7 @@ export function ScheduleGrid({
                         ? 'bg-zinc-50/50 text-zinc-900'
                         : 'bg-white text-zinc-900'
                   }`}
+                  style={{ willChange: 'transform' }}
                 >
                   {s.staff_name}
                 </td>

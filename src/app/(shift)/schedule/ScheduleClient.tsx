@@ -362,7 +362,7 @@ export function ScheduleClient(init: Props) {
       </header>
 
       {/* スマホ・タブレット（lg未満） */}
-      <header className="sticky top-0 z-10 border-b border-zinc-100 bg-white/95 backdrop-blur-sm shadow-sm lg:hidden">
+      <header className="sticky top-0 z-50 border-b border-zinc-100 bg-white/95 backdrop-blur-sm shadow-sm lg:hidden">
         <div className="flex items-center gap-1.5 px-3 py-2">
           <button
             type="button"
