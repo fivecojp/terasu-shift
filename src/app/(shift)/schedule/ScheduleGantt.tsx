@@ -76,6 +76,18 @@ export function ScheduleGantt({
     return ticks
   }, [gs, ge])
 
+  const halfHourTicks = useMemo(() => {
+    if (ge <= gs) return []
+    const ticks: { minutes: number; left: string }[] = []
+    const firstHalf = Math.ceil(gs / 30) * 30
+    for (let m = firstHalf; m <= ge; m += 30) {
+      if (m % 60 === 0) continue
+      const left = ((m - gs) / (ge - gs)) * 100
+      ticks.push({ minutes: m, left: `${left}%` })
+    }
+    return ticks
+  }, [gs, ge])
+
   const tracks = useRef<Map<string, HTMLDivElement>>(new Map())
   const setTrack = (id: string, el: HTMLDivElement | null) => {
     if (el) tracks.current.set(id, el)
@@ -83,6 +95,9 @@ export function ScheduleGantt({
   }
 
   const [live, setLive] = useState<Map<string, { s: number; e: number }>>(
+    () => new Map()
+  )
+  const [committed, setCommitted] = useState<Map<string, { s: number; e: number }>>(
     () => new Map()
   )
 
@@ -108,13 +123,15 @@ export function ScheduleGantt({
     (sid: string, sh: Shift | undefined) => {
       const l = live.get(sid)
       if (l) return { lo: l.s, hi: l.e }
+      const c = committed.get(sid)
+      if (c) return { lo: c.s, hi: c.e }
       if (!sh) return { lo: null as number | null, hi: null as number | null }
       return {
         lo: isoToMinutesFromWorkDateMidnight(sh.scheduled_start_at, workDate),
         hi: isoToMinutesFromWorkDateMidnight(sh.scheduled_end_at, workDate),
       }
     },
-    [live, workDate]
+    [live, committed, workDate]
   )
 
   /** 中央ドラッグ: バーごと平行移動 */
@@ -160,11 +177,15 @@ export function ScheduleGantt({
         n.delete(staffId)
         return n
       })
-      if (
-        fin &&
-        fin.e - fin.s >= MIN_DURATION_MIN
-      ) {
-        void onSave(fin.staffId, fin.s, fin.e)
+      if (fin && fin.e - fin.s >= MIN_DURATION_MIN) {
+        setCommitted((m) => new Map(m).set(fin.staffId, { s: fin.s, e: fin.e }))
+        void onSave(fin.staffId, fin.s, fin.e).finally(() => {
+          setCommitted((m) => {
+            const n = new Map(m)
+            n.delete(fin.staffId)
+            return n
+          })
+        })
       }
     }
 
@@ -205,11 +226,15 @@ export function ScheduleGantt({
         n.delete(staffId)
         return n
       })
-      if (
-        fin &&
-        fin.e - fin.s >= MIN_DURATION_MIN
-      ) {
-        void onSave(fin.staffId, fin.s, fin.e)
+      if (fin && fin.e - fin.s >= MIN_DURATION_MIN) {
+        setCommitted((m) => new Map(m).set(fin.staffId, { s: fin.s, e: fin.e }))
+        void onSave(fin.staffId, fin.s, fin.e).finally(() => {
+          setCommitted((m) => {
+            const n = new Map(m)
+            n.delete(fin.staffId)
+            return n
+          })
+        })
       }
     }
 
@@ -250,11 +275,15 @@ export function ScheduleGantt({
         n.delete(staffId)
         return n
       })
-      if (
-        fin &&
-        fin.e - fin.s >= MIN_DURATION_MIN
-      ) {
-        void onSave(fin.staffId, fin.s, fin.e)
+      if (fin && fin.e - fin.s >= MIN_DURATION_MIN) {
+        setCommitted((m) => new Map(m).set(fin.staffId, { s: fin.s, e: fin.e }))
+        void onSave(fin.staffId, fin.s, fin.e).finally(() => {
+          setCommitted((m) => {
+            const n = new Map(m)
+            n.delete(fin.staffId)
+            return n
+          })
+        })
       }
     }
 
@@ -273,19 +302,28 @@ export function ScheduleGantt({
     const mid = gs + ((e.clientX - r.left) / r.width) * span
     const ns = snapMinutes(mid - 90, 30)
     const ne = Math.min(ge, ns + 180)
-    if (ne > ns && ne - ns >= MIN_DURATION_MIN) void onSave(staffId, ns, ne)
+    if (ne > ns && ne - ns >= MIN_DURATION_MIN) {
+      setCommitted((m) => new Map(m).set(staffId, { s: ns, e: ne }))
+      void onSave(staffId, ns, ne).finally(() => {
+        setCommitted((m) => {
+          const n = new Map(m)
+          n.delete(staffId)
+          return n
+        })
+      })
+    }
   }
 
   return (
     <div className="mt-6 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
-      <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3">
-        <h2 className="text-base font-semibold text-zinc-900">タイムライン</h2>
-        <p className="mt-0.5 text-sm text-zinc-500">{workDate}</p>
-        <p className="mt-2 text-sm text-zinc-500">
-          スレート色＝確定シフト（左右でリサイズ・中央で移動）。未登録の行はトラックをクリックで仮登録。薄いスレートは希望の参考表示です。
-        </p>
+      <div className="flex items-center gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-2">
+        <h2 className="text-sm font-semibold text-zinc-900">タイムライン</h2>
+        <span className="text-xs text-zinc-400">{workDate}</span>
+        <span className="text-xs text-zinc-400 hidden sm:inline">
+          確定シフト: ドラッグで移動・端でリサイズ　未登録: クリックで仮登録
+        </span>
       </div>
-      <div className="space-y-0 px-4 py-3">
+      <div className="px-4 py-2">
         <div className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-end gap-2">
           <div aria-hidden className="min-h-6" />
           <div className="relative h-6 border-b border-zinc-200 bg-zinc-50">
@@ -328,7 +366,7 @@ export function ScheduleGantt({
           return (
             <div
               key={s.staff_id}
-              className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-center gap-2 border-b border-zinc-100 py-2 last:border-b-0"
+              className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-center gap-2 border-b border-zinc-100 py-1.5 last:border-b-0"
             >
               <div className="truncate text-sm font-medium text-zinc-900">
                 {s.staff_name}
@@ -343,6 +381,13 @@ export function ScheduleGantt({
                   <div
                     key={tick.minutes}
                     className="pointer-events-none absolute top-0 bottom-0 z-0 w-px bg-zinc-100"
+                    style={{ left: tick.left }}
+                  />
+                ))}
+                {halfHourTicks.map((tick) => (
+                  <div
+                    key={`half-${tick.minutes}`}
+                    className="pointer-events-none absolute top-0 bottom-0 z-0 w-px bg-zinc-50"
                     style={{ left: tick.left }}
                   />
                 ))}
