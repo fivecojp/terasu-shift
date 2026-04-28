@@ -297,15 +297,15 @@ export function RequestShiftClient(props: Props) {
   const [headerExpanded, setHeaderExpanded] = useState(false)
 
   const monthToggleActive =
-    'min-h-10 flex-none rounded-full px-4 py-2 text-sm font-semibold bg-slate-700 text-white'
+    'min-h-10 flex-none rounded-lg px-4 py-2 text-sm font-semibold bg-slate-700 text-white'
   const monthToggleInactive =
-    'min-h-10 flex-none rounded-full px-4 py-2 text-sm font-medium border border-slate-300 bg-white text-slate-600'
+    'min-h-10 flex-none rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50'
 
   const periodControl =
     settings.shift_cycle === 'monthly' ? (
       <div className="flex flex-col gap-2">
         <span className="text-xs font-medium text-zinc-500">対象期間</span>
-        <p className="text-sm font-medium text-slate-800">全期間（月初〜月末）</p>
+        <p className="text-sm font-medium text-zinc-800">全期間（月初〜月末）</p>
       </div>
     ) : settings.shift_cycle === 'semimonthly' ? (
       <div className="flex flex-col gap-2">
@@ -348,7 +348,7 @@ export function RequestShiftClient(props: Props) {
           <p className="text-sm text-amber-800">この月に表示できる週がありません。</p>
         ) : (
           <select
-            className="min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base font-medium text-slate-800"
+            className="min-h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
             value={
               periodSel.kind === 'weekly'
                 ? periodSel.weekId
@@ -374,7 +374,7 @@ export function RequestShiftClient(props: Props) {
           <p className="text-sm text-amber-800">この月に表示できる2週ブロックがありません。</p>
         ) : (
           <select
-            className="min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base font-medium text-slate-800"
+            className="min-h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
             value={
               periodSel.kind === 'biweekly'
                 ? periodSel.biweekId
@@ -396,35 +396,35 @@ export function RequestShiftClient(props: Props) {
     ) : null
 
   return (
-    <div className="flex min-h-full flex-col bg-zinc-50">
-      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 px-4 py-2 shadow-sm backdrop-blur">
+    <div className="flex min-h-screen flex-col bg-zinc-50">
+      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white shadow-sm">
         {!headerExpanded ? (
-          <div className="mx-auto flex w-full max-w-lg items-start justify-between gap-2">
+          <div className="mx-auto flex w-full max-w-lg items-start justify-between gap-2 px-4 py-3">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-slate-800">
+              <p className="truncate text-sm font-semibold text-zinc-800">
                 {monthSummaryLabel} · {periodSummaryLabel}
               </p>
-              <p className="mt-0.5 truncate text-xs font-medium text-red-700">
+              <p className="mt-0.5 truncate text-xs text-zinc-500">
                 締切 {formatJaLong(deadlineYmd)}
               </p>
             </div>
             <button
               type="button"
-              className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800"
+              className="shrink-0 px-2 py-1 text-xs text-zinc-400 hover:text-zinc-600"
               onClick={() => setHeaderExpanded(true)}
             >
               ▼ 設定を表示
             </button>
           </div>
         ) : (
-          <div className="mx-auto flex w-full max-w-lg flex-col gap-3">
+          <div className="mx-auto flex w-full max-w-lg flex-col gap-3 px-4 py-3">
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate text-xs text-zinc-500">締め切り</p>
-                <p className="text-base font-semibold text-red-700">
+                <p className="text-base font-bold text-rose-600">
                   {formatJaLong(deadlineYmd)}
                 </p>
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-zinc-400">
                   {settings.deadline_type === 'days_before'
                     ? `期間開始日の ${settings.deadline_value} 日前まで`
                     : settings.deadline_type === 'weeks_before'
@@ -440,14 +440,14 @@ export function RequestShiftClient(props: Props) {
                 {storeCount >= 2 ? (
                   <Link
                     href="/login/select-store"
-                    className="min-h-10 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                    className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
                   >
                     店舗切り替え
                   </Link>
                 ) : null}
                 <button
                   type="button"
-                  className="min-h-10 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-50"
+                  className="text-sm text-zinc-400 underline hover:text-zinc-600"
                   onClick={() => void logoutAndRedirectToLogin()}
                 >
                   ログアウト
@@ -474,7 +474,7 @@ export function RequestShiftClient(props: Props) {
 
             <button
               type="button"
-              className="w-full rounded-lg border border-slate-300 bg-slate-50 py-2 text-sm font-medium text-slate-800"
+              className="w-full rounded-lg border border-zinc-300 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
               onClick={() => setHeaderExpanded(false)}
             >
               ▲ 設定を閉じる
@@ -483,30 +483,33 @@ export function RequestShiftClient(props: Props) {
         )}
       </header>
 
-      <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-16 pt-4">
-        <h1 className="mb-3 text-lg font-semibold text-zinc-900">希望シフト</h1>
+      <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-16 pt-0">
+        <h2 className="px-0 pb-2 pt-4 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          希望シフト
+        </h2>
 
         {isSubmitted ? (
-          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="font-medium">この対象期間には提出済みの希望があります。</p>
-              {!editing ? (
-                <button
-                  type="button"
-                  className="min-h-10 shrink-0 rounded-lg bg-emerald-800 px-3 py-2 text-sm font-medium text-white"
-                  onClick={() => setEditing(true)}
-                >
-                  修正する
-                </button>
-              ) : null}
-            </div>
+          <div className="my-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+            <p className="text-sm font-semibold text-emerald-700">提出済み</p>
+            <p className="mt-1 text-xs text-emerald-600">
+              修正する場合は下のボタンを押してください
+            </p>
+            {!editing ? (
+              <button
+                type="button"
+                className="mt-3 rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+                onClick={() => setEditing(true)}
+              >
+                修正する
+              </button>
+            ) : null}
           </div>
         ) : null}
 
-        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
-          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-2 border-b border-zinc-200 bg-zinc-50 px-1 py-2 text-xs font-medium text-zinc-600">
-            <span>日付</span>
-            <span>希望</span>
+        <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+          <div className="flex gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+            <span className="w-14 shrink-0">日付</span>
+            <span className="min-w-0 flex-1">希望</span>
           </div>
 
           <div className="max-h-[calc(100vh-18rem)] overflow-y-auto overscroll-y-contain pb-28">
@@ -542,7 +545,7 @@ export function RequestShiftClient(props: Props) {
         <div className="mt-6 pb-8">
           <button
             type="button"
-            className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-base font-medium text-white disabled:opacity-40"
+            className="w-full rounded-lg bg-slate-700 py-3 text-base font-semibold tracking-wide text-white hover:bg-slate-800 disabled:opacity-40"
             disabled={(!!isSubmitted && !editing) || workDates.length === 0}
             onClick={submit}
           >

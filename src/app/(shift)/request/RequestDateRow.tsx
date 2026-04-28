@@ -1,6 +1,7 @@
 'use client'
 
 import type { ShiftPattern } from '@/types/database'
+import { parseYmd } from '@/lib/shift-request-periods'
 import { minutesToDisplay } from '@/lib/time'
 
 export type Tone = 'sat' | 'sunh' | 'plain'
@@ -11,6 +12,8 @@ export type RowVals = {
   customStart: number | null
   customEnd: number | null
 }
+
+const WD = ['日', '月', '火', '水', '木', '金', '土'] as const
 
 type Props = {
   dateYmd: string
@@ -40,12 +43,21 @@ export function RequestDateRow({
   row,
   onChangeMode,
 }: Props) {
-  const bg =
+  const d = parseYmd(dateYmd)
+  const md = `${d.getMonth() + 1}/${d.getDate()}`
+  const wdl = WD[d.getDay()]
+  const dateNumClass =
     tone === 'sat'
-      ? 'bg-sky-50'
+      ? 'text-sm font-semibold text-sky-700'
       : tone === 'sunh'
-        ? 'bg-rose-50'
-        : 'bg-white'
+        ? 'text-sm font-semibold text-rose-600'
+        : 'text-sm font-semibold text-zinc-800'
+  const wdClass =
+    tone === 'sat'
+      ? 'text-xs text-sky-500'
+      : tone === 'sunh'
+        ? 'text-xs text-rose-400'
+        : 'text-xs text-zinc-400'
 
   const sel = selectValueFromRow(row)
 
@@ -85,20 +97,24 @@ export function RequestDateRow({
     })
   }
 
+  const selectClass =
+    'min-h-10 min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400'
+  const customSelectClass =
+    'min-h-9 min-w-0 rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400'
+
   return (
-    <div
-      className={`grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-2 border-b border-zinc-100 py-3 ${bg}`}
-    >
-      <div className="flex min-h-11 items-center pl-1 text-sm text-zinc-900">
-        {labelText}
+    <div className="flex items-center gap-3 border-b border-zinc-100 bg-white px-4 py-2">
+      <div className="flex shrink-0 flex-col gap-0.5">
+        <span className={dateNumClass}>{md}</span>
+        <span className={wdClass}>{wdl}</span>
       </div>
-      <div className="flex min-w-0 flex-col gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
         <label className="sr-only" htmlFor={`req-${dateYmd}`}>
           {labelText}
         </label>
         <select
           id={`req-${dateYmd}`}
-          className="min-h-11 min-w-0 rounded-lg border border-zinc-300 bg-white px-2 py-2 text-base font-medium text-slate-800"
+          className={selectClass}
           disabled={disabled}
           value={
             sel === 'custom' && !halfOpts.length
@@ -133,10 +149,9 @@ export function RequestDateRow({
         </select>
 
         {row.mode === 'custom' ? (
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <label className="text-zinc-600">開始</label>
+          <div className="flex flex-wrap items-center gap-2">
             <select
-              className="min-h-11 min-w-[7rem] rounded-lg border border-zinc-300 bg-white px-2 py-2 text-base font-medium text-slate-800"
+              className={customSelectClass}
               disabled={disabled}
               value={row.customStart ?? ''}
               onChange={(e) =>
@@ -153,10 +168,9 @@ export function RequestDateRow({
                 </option>
               ))}
             </select>
-            <span className="text-zinc-500">〜</span>
-            <label className="text-zinc-600">終了</label>
+            <span className="text-sm text-zinc-500">〜</span>
             <select
-              className="min-h-11 min-w-[7rem] rounded-lg border border-zinc-300 bg-white px-2 py-2 text-base font-medium text-slate-800"
+              className={customSelectClass}
               disabled={disabled}
               value={row.customEnd ?? ''}
               onChange={(e) =>
@@ -179,4 +193,3 @@ export function RequestDateRow({
     </div>
   )
 }
-

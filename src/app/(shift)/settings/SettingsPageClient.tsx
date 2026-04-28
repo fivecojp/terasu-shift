@@ -181,6 +181,12 @@ export function SettingsPageClient({
 
   const scheduleHref = `/schedule?ym=${scheduleLinkYm}`
 
+  const inputSelectClass =
+    'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400'
+  const inlineSelectClass =
+    'rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400'
+  const minuteSelectClass = `min-h-10 ${inputSelectClass}`
+
   const cycleLabels = useMemo(
     () => ({
       weekly: 'weekly（毎週）',
@@ -192,27 +198,24 @@ export function SettingsPageClient({
   )
 
   return (
-    <div className="min-h-full bg-zinc-50 pb-16">
+    <div className="min-h-screen bg-zinc-50">
       {toast ? (
-        <div className="fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-full bg-zinc-900 px-5 py-2.5 text-sm text-white shadow-lg">
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-zinc-900 px-5 py-3 text-sm text-white shadow-lg">
           {toast}
         </div>
       ) : null}
 
-      <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white px-4 py-4 shadow-sm md:px-8">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-lg font-semibold text-zinc-900">シフト設定</h1>
-            <Link
-              href={scheduleHref}
-              className="text-sm text-emerald-800 underline underline-offset-2 hover:text-emerald-950"
-            >
-              シフト作成へ戻る
-            </Link>
-          </div>
+      <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white shadow-sm">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3">
+          <Link
+            href={scheduleHref}
+            className="text-sm text-zinc-500 hover:text-zinc-800"
+          >
+            ← シフト作成へ戻る
+          </Link>
           <button
             type="button"
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
+            className="text-sm text-zinc-400 underline hover:text-zinc-600"
             onClick={() => void logoutAndRedirectToLogin()}
           >
             ログアウト
@@ -220,63 +223,83 @@ export function SettingsPageClient({
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-10 px-4 py-8 md:px-8">
-        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-base font-semibold text-zinc-900">
+      <div className="mx-auto max-w-2xl px-4 py-8">
+        <h1 className="mb-6 text-xl font-bold text-zinc-900">シフト設定</h1>
+
+        <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
             シフトパターン
           </h2>
-          <p className="mb-4 text-sm text-zinc-600">
+          <p className="mb-4 text-sm text-zinc-500">
             削除は論理削除です（<code className="text-xs">is_active = false</code>
             ）。保存は行ごとに実行します。
           </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] border-collapse text-sm">
               <thead>
-                <tr className="border-b border-zinc-200 bg-zinc-50 text-left text-zinc-700">
-                  <th className="px-3 py-2 font-medium">パターン名</th>
-                  <th className="px-3 py-2 font-medium">開始</th>
-                  <th className="px-3 py-2 font-medium">終了</th>
-                  <th className="px-3 py-2 font-medium">表示順</th>
-                  <th className="px-3 py-2 font-medium">有効</th>
-                  <th className="px-3 py-2 font-medium">操作</th>
+                <tr className="border-b border-zinc-200 bg-zinc-50 text-left text-zinc-500">
+                  <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wider">
+                    パターン名
+                  </th>
+                  <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wider">
+                    開始
+                  </th>
+                  <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wider">
+                    終了
+                  </th>
+                  <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wider">
+                    表示順
+                  </th>
+                  <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wider">
+                    有効
+                  </th>
+                  <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wider">
+                    操作
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {patternEdits.map((r, ix) => (
                   <tr key={r.clientKey} className="border-b border-zinc-100">
-                    <td className="p-2">
+                    <td className="p-2 align-middle">
                       <input
                         type="text"
-                        className="w-full min-w-[8rem] rounded border border-zinc-300 px-2 py-1.5"
+                        className={`min-w-[8rem] ${inputSelectClass}`}
                         value={r.pattern_name}
                         onChange={(e) =>
                           updatePattern(ix, { pattern_name: e.target.value })
                         }
                       />
                     </td>
-                    <td className="p-2">
-                      <MinuteSelect
-                        value={r.start_minutes}
-                        onChange={(m) => updatePattern(ix, { start_minutes: m })}
-                      />
-                      <span className="ml-1 text-xs text-zinc-500">
-                        {minutesToDisplay(r.start_minutes)}
-                      </span>
+                    <td className="p-2 align-middle">
+                      <div className="flex flex-wrap items-center gap-1">
+                        <MinuteSelect
+                          className={minuteSelectClass}
+                          value={r.start_minutes}
+                          onChange={(m) => updatePattern(ix, { start_minutes: m })}
+                        />
+                        <span className="text-xs text-zinc-500">
+                          {minutesToDisplay(r.start_minutes)}
+                        </span>
+                      </div>
                     </td>
-                    <td className="p-2">
-                      <MinuteSelect
-                        value={r.end_minutes}
-                        onChange={(m) => updatePattern(ix, { end_minutes: m })}
-                      />
-                      <span className="ml-1 text-xs text-zinc-500">
-                        {minutesToDisplay(r.end_minutes)}
-                      </span>
+                    <td className="p-2 align-middle">
+                      <div className="flex flex-wrap items-center gap-1">
+                        <MinuteSelect
+                          className={minuteSelectClass}
+                          value={r.end_minutes}
+                          onChange={(m) => updatePattern(ix, { end_minutes: m })}
+                        />
+                        <span className="text-xs text-zinc-500">
+                          {minutesToDisplay(r.end_minutes)}
+                        </span>
+                      </div>
                     </td>
-                    <td className="p-2">
+                    <td className="p-2 align-middle">
                       <input
                         type="number"
                         min={0}
-                        className="w-20 rounded border border-zinc-300 px-2 py-1.5"
+                        className="w-20 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
                         value={r.display_order}
                         onChange={(e) =>
                           updatePattern(ix, {
@@ -285,7 +308,7 @@ export function SettingsPageClient({
                         }
                       />
                     </td>
-                    <td className="p-2">
+                    <td className="p-2 align-middle">
                       <input
                         type="checkbox"
                         checked={r.is_active}
@@ -294,18 +317,18 @@ export function SettingsPageClient({
                         }
                       />
                     </td>
-                    <td className="p-2">
-                      <div className="flex flex-wrap gap-2">
+                    <td className="p-2 align-middle">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          className="rounded-md bg-zinc-900 px-2 py-1.5 text-xs text-white"
+                          className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
                           onClick={() => void savePatternRow(ix)}
                         >
                           保存
                         </button>
                         <button
                           type="button"
-                          className="rounded-md border border-zinc-300 px-2 py-1.5 text-xs"
+                          className="text-xs text-rose-500 hover:underline"
                           onClick={() => void removePatternRow(ix)}
                         >
                           削除
@@ -319,7 +342,7 @@ export function SettingsPageClient({
           </div>
           <button
             type="button"
-            className="mt-4 rounded-lg border border-dashed border-zinc-400 px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-50"
+            className="mt-4 rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
             onClick={addPatternRow}
           >
             ＋ パターンを追加
@@ -328,9 +351,9 @@ export function SettingsPageClient({
 
         <form
           onSubmit={saveSettings}
-          className="space-y-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+          className="mb-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm"
         >
-          <h2 className="text-base font-semibold text-zinc-900">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
             表示・締切・サイクル
           </h2>
 
@@ -339,18 +362,20 @@ export function SettingsPageClient({
               ガントチャート表示時間
             </h3>
             <div className="flex flex-wrap items-center gap-3">
-              <label className="flex flex-wrap items-center gap-2 text-sm">
+              <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
                 開始
                 <MinuteSelect
+                  className={minuteSelectClass}
                   value={sett.gantt_start_minutes}
                   onChange={(m) =>
                     setSett((s) => ({ ...s, gantt_start_minutes: m }))
                   }
                 />
               </label>
-              <label className="flex flex-wrap items-center gap-2 text-sm">
+              <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
                 終了
                 <MinuteSelect
+                  className={minuteSelectClass}
                   value={sett.gantt_end_minutes}
                   onChange={(m) =>
                     setSett((s) => ({ ...s, gantt_end_minutes: m }))
@@ -360,13 +385,13 @@ export function SettingsPageClient({
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="mt-6 space-y-2">
             <h3 className="text-sm font-medium text-zinc-800">シフトサイクル</h3>
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               {(
                 ['weekly', 'biweekly', 'semimonthly', 'monthly'] as const
               ).map((c) => (
-                <label key={c} className="flex items-center gap-2 text-sm">
+                <label key={c} className="flex items-center gap-2 text-sm text-zinc-700">
                   <input
                     type="radio"
                     name="shift_cycle"
@@ -379,7 +404,7 @@ export function SettingsPageClient({
               ))}
             </div>
             <div className="mt-2 flex gap-4">
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 text-sm text-zinc-700">
                 <input
                   type="radio"
                   name="week_start"
@@ -390,7 +415,7 @@ export function SettingsPageClient({
                 />
                 週は月曜始まり
               </label>
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 text-sm text-zinc-700">
                 <input
                   type="radio"
                   name="week_start"
@@ -404,13 +429,13 @@ export function SettingsPageClient({
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="mt-6 space-y-2">
             <h3 className="text-sm font-medium text-zinc-800">
               希望シフト締切
             </h3>
             <div className="flex flex-wrap items-center gap-3">
               <select
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm"
+                className={inlineSelectClass}
                 value={sett.deadline_type}
                 onChange={(e) =>
                   setSett((s) => ({
@@ -423,12 +448,12 @@ export function SettingsPageClient({
                 <option value="weeks_before">週数（weeks_before）</option>
                 <option value="months_before">月数（months_before）</option>
               </select>
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
                 <input
                   type="number"
                   min={1}
                   step={1}
-                  className="w-24 rounded border border-zinc-300 px-2 py-1.5"
+                  className="w-24 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
                   value={sett.deadline_value}
                   onChange={(e) =>
                     setSett((s) => ({
@@ -437,7 +462,7 @@ export function SettingsPageClient({
                     }))
                   }
                 />
-                <span className="text-zinc-600">
+                <span className="text-zinc-500">
                   {sett.deadline_type === 'days_before' && '（例: 7 = 期間開始の7日前まで）'}
                   {sett.deadline_type === 'weeks_before' && '（例: 2 = 2週間前まで）'}
                   {sett.deadline_type === 'months_before' && '（例: 1 = 1か月前まで）'}
@@ -446,16 +471,16 @@ export function SettingsPageClient({
             </div>
           </div>
 
-          <div className="pt-4">
+          <div className="pt-6">
             <button
               type="submit"
-              className="rounded-xl bg-emerald-700 px-6 py-3 text-sm font-medium text-white hover:bg-emerald-800"
+              className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
             >
               表示・サイクル・締切を保存
             </button>
           </div>
         </form>
-      </main>
+      </div>
     </div>
   )
 }
