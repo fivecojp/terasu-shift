@@ -630,7 +630,7 @@ export function RequestShiftClient(props: Props) {
               </button>
             </div>
 
-            <div>{periodControl}</div>
+            {periodControl}
 
             <button
               type="button"
@@ -695,7 +695,7 @@ export function RequestShiftClient(props: Props) {
               <span className="min-w-0 flex-1">希望</span>
             </div>
 
-            <div className="max-h-[calc(100vh-18rem)] overflow-y-auto overscroll-y-contain pb-28">
+            <div className="pb-32">
               {workDates.map((d) => {
                 const dow = parseYmd(d).getDay()
                 const holiday = holidaySet.has(d)
