@@ -33,7 +33,8 @@ type Props = {
 }
 
 const MIN_DURATION_MIN = 30
-const HANDLE_CLASS = 'relative z-[2] w-2 shrink-0 cursor-ew-resize select-none'
+const HANDLE_CLASS =
+  'relative z-[2] w-2 shrink-0 cursor-ew-resize select-none rounded-sm bg-slate-800 opacity-60 hover:opacity-100'
 
 function pctLeft(lo: number, gs: number, ge: number) {
   const sp = ge - gs
@@ -276,14 +277,15 @@ export function ScheduleGantt({
   }
 
   return (
-    <div className="mt-6 rounded-xl border border-zinc-300 bg-white p-4 shadow-sm">
-      <h2 className="mb-1 text-sm font-semibold text-zinc-900">
-        タイムライン（{workDate}）
-      </h2>
-      <p className="mb-4 text-xs text-zinc-500">
-        緑＝確定バー（左右でリサイズ・中央で移動）。未登録の行はトラック本体をクリックで仮登録。薄ピンクは希望のみ参考です。
-      </p>
-      <div className="space-y-2">
+    <div className="mt-6 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3">
+        <h2 className="text-base font-semibold text-zinc-900">タイムライン</h2>
+        <p className="mt-0.5 text-sm text-zinc-500">{workDate}</p>
+        <p className="mt-2 text-sm text-zinc-500">
+          スレート色＝確定シフト（左右でリサイズ・中央で移動）。未登録の行はトラックをクリックで仮登録。薄いスレートは希望の参考表示です。
+        </p>
+      </div>
+      <div className="space-y-0 px-4 py-3">
         <div className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-end gap-2">
           <div aria-hidden className="min-h-6" />
           <div className="relative h-6 border-b border-zinc-200 bg-zinc-50">
@@ -326,13 +328,15 @@ export function ScheduleGantt({
           return (
             <div
               key={s.staff_id}
-              className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-center gap-2"
+              className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-center gap-2 border-b border-zinc-100 py-2 last:border-b-0"
             >
-              <div className="truncate text-sm text-zinc-800">{s.staff_name}</div>
+              <div className="truncate text-sm font-medium text-zinc-900">
+                {s.staff_name}
+              </div>
               <div
                 ref={(el) => setTrack(s.staff_id, el)}
                 role="presentation"
-                className="relative h-10 cursor-default rounded bg-zinc-100"
+                className="relative h-10 cursor-default bg-white"
                 onClick={(e) => clickEmpty(s.staff_id, e)}
               >
                 {hourTicks.map((tick) => (
@@ -344,7 +348,7 @@ export function ScheduleGantt({
                 ))}
                 {rqLo !== null && rqHi !== null && rqHi > rqLo ? (
                   <div
-                    className="pointer-events-none absolute top-1 bottom-1 rounded bg-rose-200/70"
+                    className="pointer-events-none absolute top-1 bottom-1 rounded bg-slate-200"
                     style={{
                       left: `${pctLeft(rqLo, gs, ge)}%`,
                       width: `${pctWidth(rqLo, rqHi, gs, ge)}%`,
@@ -354,7 +358,7 @@ export function ScheduleGantt({
 
                 {lo !== null && hi !== null && hi > lo ? (
                   <div
-                    className="absolute top-1 bottom-1 flex overflow-hidden rounded-sm bg-emerald-600 shadow"
+                    className="absolute top-1 bottom-1 flex overflow-hidden rounded bg-slate-600"
                     style={{
                       left: `${pctLeft(lo, gs, ge)}%`,
                       width: `${pctWidth(lo, hi, gs, ge)}%`,
@@ -363,14 +367,14 @@ export function ScheduleGantt({
                     role="presentation"
                   >
                     <div
-                      className={`${HANDLE_CLASS} hover:bg-emerald-800/40`}
+                      className={HANDLE_CLASS}
                       onMouseDown={(ev) =>
                         startResizeLeft(s.staff_id, lo as number, hi as number, ev)
                       }
                       title="開始を変更"
                     />
                     <div
-                      className="flex min-w-[20px] flex-1 cursor-grab items-center justify-center overflow-hidden truncate bg-emerald-600 px-0.5 text-center text-[10px] font-medium text-white active:cursor-grabbing"
+                      className="flex min-w-[20px] flex-1 cursor-grab items-center justify-center overflow-hidden truncate bg-slate-600 px-0.5 text-center text-xs font-medium text-white active:cursor-grabbing"
                       title={`${minutesToDisplay(lo)}〜${minutesToDisplay(hi)}`}
                       onMouseDown={(ev) =>
                         startMoveDrag(s.staff_id, lo as number, hi as number, ev)
@@ -379,7 +383,7 @@ export function ScheduleGantt({
                       {minutesToDisplay(lo as number)}
                     </div>
                     <div
-                      className={`${HANDLE_CLASS} hover:bg-emerald-800/40`}
+                      className={HANDLE_CLASS}
                       onMouseDown={(ev) =>
                         startResizeRight(s.staff_id, lo as number, hi as number, ev)
                       }

@@ -189,144 +189,143 @@ export function ScheduleClient(init: Props) {
   }
 
   return (
-    <div className="min-h-full bg-zinc-100 pb-24">
-      <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white px-6 py-4 shadow-sm">
-        <div className="mx-auto flex max-w-[1600px] flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-lg font-semibold text-zinc-900">{storeName}</div>
-            <div className="flex shrink-0 items-center gap-3">
-              <span className="text-sm text-zinc-600">
-                担当: {session.staff_name}
-              </span>
-              {session.role === 'leader' ? (
-                <Link
-                  href="/settings"
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
-                >
-                  設定
-                </Link>
-              ) : null}
-              {storeCount >= 2 ? (
-                <Link
-                  href="/login/select-store"
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-                >
-                  店舗切り替え
-                </Link>
-              ) : null}
-              <button
-                type="button"
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-800 hover:bg-zinc-50"
-                onClick={() => void logoutAndRedirectToLogin()}
-              >
-                ログアウト
-              </button>
-            </div>
+    <div className="min-h-full bg-zinc-50 pb-24">
+      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white shadow-sm">
+        <div className="mx-auto flex max-w-screen-xl flex-wrap items-center gap-3 px-4 py-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="text-lg font-bold text-zinc-900">{storeName}</span>
+            <span className="text-zinc-300" aria-hidden>
+              |
+            </span>
+            <span className="text-sm text-zinc-500">{session.staff_name}</span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Link
-                href={buildSchedulePath(
-                  viewRange.prevStart,
-                  scheduleViewKind
-                )}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm hover:bg-zinc-50"
-              >
-                ＜
-              </Link>
-              <span className="font-mono text-sm font-medium text-zinc-900">
-                {viewRange.viewLabel}
-              </span>
-              <Link
-                href={buildSchedulePath(
-                  viewRange.nextStart,
-                  scheduleViewKind
-                )}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm hover:bg-zinc-50"
-              >
-                ＞
-              </Link>
-            </div>
-
-            <label className="flex items-center gap-2 text-sm text-zinc-700">
-              <span className="text-zinc-500">表示幅</span>
-              <select
-                className="rounded-lg border border-zinc-300 bg-white px-2 py-1.5"
-                value={kindToViewSpan(scheduleViewKind)}
-                onChange={(e) => {
-                  const nextKind = viewSpanToKind(e.target.value as ViewSpan)
-                  router.push(buildSchedulePath(viewStartYmd, nextKind))
-                }}
-              >
-                <option value="1w">{viewSpanLabel('1w')}</option>
-                <option value="2w">{viewSpanLabel('2w')}</option>
-                <option value="half">{viewSpanLabel('half')}</option>
-                <option value="1m">{viewSpanLabel('1m')}</option>
-              </select>
-            </label>
-
-            <div className="flex rounded-lg border border-zinc-300 p-0.5">
-              <button
-                type="button"
-                className={`rounded-md px-3 py-1.5 text-sm ${
-                  mode === 'request'
-                    ? 'bg-zinc-900 text-white'
-                    : 'text-zinc-700'
-                }`}
-                onClick={() => setMode('request')}
-              >
-                希望
-              </button>
-              <button
-                type="button"
-                className={`rounded-md px-3 py-1.5 text-sm ${
-                  mode === 'shift'
-                    ? 'bg-zinc-900 text-white'
-                    : 'text-zinc-700'
-                }`}
-                onClick={() => setMode('shift')}
-              >
-                シフト
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-zinc-600">公開：</span>
-              {publishForRange?.status === 'published' ? (
-                <span className="font-medium text-emerald-700">
-                  公開済み{' '}
-                  {publishForRange.published_at
-                    ? `（${publishForRange.published_at.slice(0, 10)}）`
-                    : ''}
-                </span>
-              ) : (
-                <>
-                  <span className="text-amber-700">ドラフト</span>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
-                    onClick={() => void onPublish()}
-                  >
-                    公開する
-                  </button>
-                </>
+          <div className="flex items-center gap-1">
+            <Link
+              href={buildSchedulePath(
+                viewRange.prevStart,
+                scheduleViewKind
               )}
-            </div>
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
+            >
+              ＜
+            </Link>
+            <span className="min-w-[7rem] text-center text-base font-semibold text-zinc-800">
+              {viewRange.viewLabel}
+            </span>
+            <Link
+              href={buildSchedulePath(
+                viewRange.nextStart,
+                scheduleViewKind
+              )}
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 hover:bg-zinc-100"
+            >
+              ＞
+            </Link>
+          </div>
 
+          <label className="flex items-center gap-2 text-sm text-zinc-700">
+            <span className="text-zinc-500">表示幅</span>
+            <select
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
+              value={kindToViewSpan(scheduleViewKind)}
+              onChange={(e) => {
+                const nextKind = viewSpanToKind(e.target.value as ViewSpan)
+                router.push(buildSchedulePath(viewStartYmd, nextKind))
+              }}
+            >
+              <option value="1w">{viewSpanLabel('1w')}</option>
+              <option value="2w">{viewSpanLabel('2w')}</option>
+              <option value="half">{viewSpanLabel('half')}</option>
+              <option value="1m">{viewSpanLabel('1m')}</option>
+            </select>
+          </label>
+
+          <div className="inline-flex rounded-lg border border-zinc-300">
             <button
               type="button"
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50"
-              onClick={() => void onCsv()}
+              className={`rounded-l-lg px-4 py-1.5 text-sm ${
+                mode === 'request'
+                  ? 'bg-slate-700 font-semibold text-white'
+                  : 'border-r border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-50'
+              }`}
+              onClick={() => setMode('request')}
             >
-              CSVエクスポート
+              希望
+            </button>
+            <button
+              type="button"
+              className={`rounded-r-lg px-4 py-1.5 text-sm ${
+                mode === 'shift'
+                  ? 'bg-slate-700 font-semibold text-white'
+                  : 'bg-white text-zinc-600 hover:bg-zinc-50'
+              }`}
+              onClick={() => setMode('shift')}
+            >
+              シフト
             </button>
           </div>
 
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-zinc-500">公開：</span>
+            {publishForRange?.status === 'published' ? (
+              <span className="font-medium text-emerald-600">
+                公開済み{' '}
+                {publishForRange.published_at
+                  ? `（${publishForRange.published_at.slice(0, 10)}）`
+                  : ''}
+              </span>
+            ) : (
+              <>
+                <span className="font-medium text-amber-600">ドラフト</span>
+                <button
+                  type="button"
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                  onClick={() => void onPublish()}
+                >
+                  公開する
+                </button>
+              </>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+            onClick={() => void onCsv()}
+          >
+            CSVエクスポート
+          </button>
+
+          <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
+            {session.role === 'leader' ? (
+              <Link
+                href="/settings"
+                className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+              >
+                設定
+              </Link>
+            ) : null}
+            {storeCount >= 2 ? (
+              <Link
+                href="/login/select-store"
+                className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+              >
+                店舗切り替え
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              className="text-sm text-zinc-400 underline hover:text-zinc-600"
+              onClick={() => void logoutAndRedirectToLogin()}
+            >
+              ログアウト
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1600px] px-6 py-6">
+      <main className="mx-auto max-w-screen-xl px-4 py-6">
         <ScheduleGrid
           staff={staff}
           columnDates={columnDates}
@@ -358,7 +357,7 @@ export function ScheduleClient(init: Props) {
           />
         ) : (
           mode === 'shift' && (
-            <p className="mt-4 text-center text-sm text-zinc-500">
+            <p className="mt-4 text-center text-sm text-zinc-400">
               「シフト」表示で日付セルをクリックすると、ガントチャートが表示されます。
             </p>
           )

@@ -88,103 +88,116 @@ export function ScheduleGrid({
   }, [])
 
   return (
-      <div className="relative overflow-x-auto rounded-lg border border-zinc-300 bg-white">
-        <table className="min-w-[840px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-zinc-200 bg-zinc-50">
-              <th className="sticky left-0 z-10 border-r border-zinc-200 bg-zinc-50 px-2 py-3 text-left font-medium text-zinc-800">
-                スタッフ
-              </th>
+    <div className="relative overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <table className="min-w-[840px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-zinc-200 bg-zinc-50">
+            <th className="sticky left-0 z-10 border-r border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-xs font-medium text-zinc-600">
+              スタッフ
+            </th>
+            {columnDates.map((d) => {
+              const [y, mo, day] = d.split('-').map(Number)
+              const dt = new Date(y, mo - 1, day)
+              const dow = dt.getDay()
+              const hol = holidays.has(d)
+              const isToday = d === todayStr
+              const tone = isToday
+                ? 'bg-slate-700 text-white font-bold'
+                : dow === 6
+                  ? 'bg-sky-50 text-sky-700'
+                  : dow === 0 || hol
+                    ? 'bg-rose-50 text-rose-600'
+                    : ''
+              return (
+                <th
+                  key={d}
+                  ref={isToday ? todayRef : undefined}
+                  className={`min-w-[92px] whitespace-pre-line border-r border-zinc-100 px-1 py-2 text-center text-xs font-medium ${
+                    isToday
+                      ? tone
+                      : `text-zinc-600 ${tone}`
+                  }`}
+                >
+                  {labelDate(d)}
+                </th>
+              )
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {staff.map((s, rowIdx) => (
+            <tr
+              key={s.staff_id}
+              className={rowIdx % 2 === 1 ? 'bg-zinc-50/50' : 'bg-white'}
+            >
+              <td
+                className={`sticky left-0 z-10 whitespace-nowrap border-r border-zinc-200 px-3 py-2 text-sm font-medium ${
+                  unsubmittedStaffIds.has(s.staff_id)
+                    ? 'border-l-2 border-l-amber-400 bg-amber-50 text-amber-800'
+                    : rowIdx % 2 === 1
+                      ? 'bg-zinc-50/50 text-zinc-900'
+                      : 'bg-white text-zinc-900'
+                }`}
+              >
+                {s.staff_name}
+              </td>
               {columnDates.map((d) => {
-                const [y, mo, day] = d.split('-').map(Number)
-                const dt = new Date(y, mo - 1, day)
-                const dow = dt.getDay()
-                const hol = holidays.has(d)
-                const isToday = d === todayStr
-                const tone = isToday
-                  ? 'bg-blue-600 text-white font-bold'
-                  : dow === 6
-                    ? 'bg-sky-100'
-                    : dow === 0 || hol
-                      ? 'bg-rose-100'
-                      : ''
+                const k = `${s.staff_id}|${d}`
+                const req = requestsKey.get(k)
+                const sh = shiftsKey.get(k)
+                const showReq = mode === 'request'
+
                 return (
-                  <th
-                    key={d}
-                    ref={isToday ? todayRef : undefined}
-                    className={`min-w-[92px] whitespace-pre-line border-l border-zinc-200 px-2 py-3 text-center ${
-                      isToday
-                        ? tone
-                        : `font-medium text-zinc-800 ${tone}`
-                    }`}
+                  <td
+                    key={`${s.staff_id}_${d}`}
+                    className="relative min-h-[44px] cursor-pointer border-b border-r border-zinc-100 px-1 py-1 text-center align-middle text-xs hover:bg-zinc-50"
+                    onClick={() =>
+                      mode === 'shift' ? onPickCell(d) : undefined
+                    }
+                    title={
+                      showReq && req
+                        ? `希望: ${requestLabel(req, patternsById)}`
+                        : undefined
+                    }
                   >
-                    {labelDate(d)}
-                  </th>
+                    {showReq ? (
+                      req ? (
+                        req.request_type === 'free' ? (
+                          <span className="inline-block rounded bg-pink-50 px-1 text-xs font-medium text-pink-600">
+                            F
+                          </span>
+                        ) : req.request_type === 'off' ? (
+                          <span className="text-xs text-zinc-400">×</span>
+                        ) : (
+                          <span className="text-xs text-zinc-500">
+                            {requestShort(req, patternsById)}
+                          </span>
+                        )
+                      ) : null
+                    ) : sh ? (
+                      <span
+                        className={
+                          sh.shift_pattern_name?.trim()
+                            ? 'text-xs font-medium text-slate-700'
+                            : 'text-xs text-slate-600'
+                        }
+                      >
+                        {sh.shift_pattern_name?.trim()
+                          ? sh.shift_pattern_name
+                          : formatShiftTimeRangeCompact(
+                              sh.scheduled_start_at,
+                              sh.scheduled_end_at,
+                              d
+                            )}
+                      </span>
+                    ) : null}
+                  </td>
                 )
               })}
             </tr>
-          </thead>
-          <tbody>
-            {staff.map((s) => (
-              <tr key={s.staff_id} className="border-b border-zinc-100">
-                <td
-                  className={`sticky left-0 z-10 border-r border-zinc-200 px-2 py-3 font-medium ${
-                    unsubmittedStaffIds.has(s.staff_id)
-                      ? 'border-l-2 border-l-amber-400 bg-amber-50 text-amber-800'
-                      : 'bg-white text-zinc-900'
-                  }`}
-                >
-                  {s.staff_name}
-                </td>
-                {columnDates.map((d) => {
-                  const k = `${s.staff_id}|${d}`
-                  const req = requestsKey.get(k)
-                  const sh = shiftsKey.get(k)
-                  const showReq = mode === 'request'
-                  const bg =
-                    showReq && req?.request_type === 'off'
-                      ? 'bg-zinc-200'
-                      : showReq && req?.request_type === 'free'
-                        ? 'bg-rose-50'
-                        : ''
-
-                  return (
-                    <td
-                      key={`${s.staff_id}_${d}`}
-                      className={`relative min-h-[48px] cursor-pointer border-l border-zinc-100 px-1 py-2 text-center align-middle ${bg}`}
-                      onClick={() =>
-                        mode === 'shift' ? onPickCell(d) : undefined
-                      }
-                      title={
-                        showReq && req
-                          ? `希望: ${requestLabel(req, patternsById)}`
-                          : undefined
-                      }
-                    >
-                      {showReq ? (
-                        req ? (
-                          <span className="text-[13px]">
-                            {requestShort(req, patternsById)}
-                          </span>
-                        ) : null
-                      ) : sh ? (
-                        <span className="text-[13px]">
-                          {sh.shift_pattern_name?.trim()
-                            ? sh.shift_pattern_name
-                            : formatShiftTimeRangeCompact(
-                                sh.scheduled_start_at,
-                                sh.scheduled_end_at,
-                                d
-                              )}
-                        </span>
-                      ) : null}
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
