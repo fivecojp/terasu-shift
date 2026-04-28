@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { logoutAndRedirectToLogin } from '@/lib/logout-client'
 
 type StoreOption = {
   store_id: string
@@ -9,11 +10,26 @@ type StoreOption = {
   role: 'general' | 'leader'
 }
 
-type Props = {
+type FormProps = {
   stores: StoreOption[]
 }
 
-export function SelectStoreForm({ stores }: Props) {
+export function SelectStoreStaffFooter({ staffName }: { staffName: string }) {
+  return (
+    <div className="mt-4 text-center">
+      <p className="text-xs text-zinc-400">{staffName} でログイン中</p>
+      <button
+        type="button"
+        className="mt-1 text-xs text-zinc-400 underline hover:text-zinc-600"
+        onClick={() => void logoutAndRedirectToLogin()}
+      >
+        ログアウト
+      </button>
+    </div>
+  )
+}
+
+export function SelectStoreForm({ stores }: FormProps) {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
@@ -49,33 +65,31 @@ export function SelectStoreForm({ stores }: Props) {
   }
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-zinc-600">
-        所属店舗が複数あります。利用する店舗を選んでください。
-      </p>
-      <ul className="space-y-2">
-        {stores.map((s) => (
-          <li key={s.store_id}>
-            <button
-              type="button"
-              disabled={loadingId !== null}
-              onClick={() => pick(s.store_id)}
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 disabled:opacity-60"
-            >
-              <span className="font-medium text-zinc-900">{s.store_name}</span>
-              <span className="shrink-0 text-xs text-zinc-500">
-                {loadingId === s.store_id
-                  ? '処理中…'
-                  : s.role === 'leader'
-                    ? 'リーダー'
-                    : '一般'}
-              </span>
-            </button>
-          </li>
+    <div>
+      <div>
+        {stores.map((store, index) => (
+          <button
+            key={store.store_id}
+            type="button"
+            onClick={() => pick(store.store_id)}
+            className={`flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-zinc-50 ${
+              index !== stores.length - 1 ? 'border-b border-zinc-100' : ''
+            } ${loadingId !== null && loadingId !== store.store_id ? 'pointer-events-none' : ''} ${
+              loadingId === store.store_id ? 'opacity-50' : ''
+            }`}
+          >
+            <span className="text-sm font-medium text-zinc-800">
+              {store.store_name}
+            </span>
+            <span className="text-xs text-zinc-300" aria-hidden>
+              ›
+            </span>
+          </button>
         ))}
-      </ul>
+      </div>
+
       {error ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="px-6 pb-4 pt-2 text-center text-xs text-rose-600" role="alert">
           {error}
         </p>
       ) : null}

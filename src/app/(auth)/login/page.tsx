@@ -51,70 +51,72 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-center bg-zinc-50 px-4 py-12">
-      <div className="w-full max-w-sm space-y-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
             TERASU-Shift
           </h1>
-          <p className="mt-2 text-sm text-zinc-600">
-            メールアドレスとパスワードでログイン
-          </p>
+          <p className="mt-1 text-sm text-zinc-500">シフト管理システム</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
-          <div className="space-y-2">
-            <label
-              htmlFor="staff_email"
-              className="block text-sm font-medium text-zinc-800"
-            >
-              メールアドレス
-            </label>
-            <input
-              id="staff_email"
-              name="staff_email"
-              type="email"
-              autoComplete="email"
-              value={staffEmail}
-              onChange={(e) => setStaffEmail(e.target.value)}
-              required
-              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 shadow-sm outline-none ring-zinc-400 placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-2"
-              placeholder="you@example.com"
-            />
-          </div>
-          <div className="space-y-2">
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-zinc-800"
-            >
-              パスワード
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 shadow-sm outline-none ring-zinc-400 placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-2"
-            />
-          </div>
+        <div className="rounded-xl border border-zinc-200 bg-white p-8 shadow-sm">
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="staff_email"
+                  className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-500"
+                >
+                  メールアドレス
+                </label>
+                <input
+                  id="staff_email"
+                  name="staff_email"
+                  type="email"
+                  autoComplete="email"
+                  value={staffEmail}
+                  onChange={(e) => setStaffEmail(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-zinc-300 px-4 py-3 text-sm text-zinc-800 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  placeholder="example@email.com"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="password"
+                  className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-500"
+                >
+                  パスワード
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-zinc-300 px-4 py-3 text-sm text-zinc-800 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                />
+              </div>
+            </div>
 
-          {error ? (
-            <p className="text-sm text-red-600" role="alert">
-              {error}
-            </p>
-          ) : null}
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-6 w-full rounded-lg bg-slate-700 py-3 text-sm font-semibold tracking-wide text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? 'ログイン中...' : 'ログイン'}
+            </button>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex w-full items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
-          >
-            {loading ? 'ログイン中…' : 'ログイン'}
-          </button>
-        </form>
+            {error ? (
+              <p className="mt-3 text-center text-xs text-rose-600" role="alert">
+                {error}
+              </p>
+            ) : null}
+          </form>
+        </div>
       </div>
     </div>
   )
