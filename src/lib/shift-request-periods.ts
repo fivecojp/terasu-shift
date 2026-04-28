@@ -328,6 +328,80 @@ export function monthHasAnyOpenPeriod(
   )
 }
 
+/** 指定月において締切前の最初の提出単位（listPeriodsWithDeadlines の並び順） */
+export function findFirstOpenPeriodInMonth(
+  targetMonthFirst: string,
+  settings: ShiftSetting,
+  todayYmd: string
+): PeriodDeadlineInfo | null {
+  for (const p of listPeriodsWithDeadlines(targetMonthFirst, settings)) {
+    if (!isDeadlineExpiredVsToday(p.deadlineYmd, todayYmd)) return p
+  }
+  return null
+}
+
+export function addOneMonthFirst(targetMonthFirst: string): string {
+  const d = parseYmd(targetMonthFirst)
+  return formatYmd(new Date(d.getFullYear(), d.getMonth() + 1, 1))
+}
+
+/**
+ * 「先頭の期間」（従来の UI デフォルト）に相当する PeriodSel。
+ * 週・隔週はその月の週一覧の先頭を使う。
+ */
+export function defaultPeriodSelForMonth(
+  settings: ShiftSetting,
+  targetMonthFirst: string
+): PeriodSel {
+  const ymd = parseYmd(targetMonthFirst)
+  const y = ymd.getFullYear()
+  const m = ymd.getMonth()
+  const wk = weekStartsOnFromSettings(settings.week_start_day)
+  const weeks = listWeekSlicesInMonth(y, m, wk)
+  const biweeks = pairBiweeklySlices(weeks)
+
+  switch (settings.shift_cycle) {
+    case 'semimonthly':
+      return { kind: 'semimonthly', phase: 'first_half' }
+    case 'monthly':
+      return { kind: 'monthly' }
+    case 'weekly': {
+      const w0 = weeks[0]
+      return w0 ? { kind: 'weekly', weekId: w0.id } : { kind: 'monthly' }
+    }
+    case 'biweekly': {
+      const b0 = biweeks[0]
+      return b0 ? { kind: 'biweekly', biweekId: b0.id } : { kind: 'monthly' }
+    }
+    default:
+      return { kind: 'monthly' }
+  }
+}
+
+/**
+ * 希望提出画面の初期表示用: 今月→来月の順で、締切前の最初の期間を採用。
+ * 両方とも全期間締切済みのときは今月 + 先頭期間（従来どおり）を返す。
+ */
+export function resolveDefaultRequestMonthAndPeriod(
+  settings: ShiftSetting,
+  todayYmd: string
+): { targetMonthFirst: string; periodSel: PeriodSel } {
+  const thisMonth = defaultTargetMonth()
+  const openThis = findFirstOpenPeriodInMonth(thisMonth, settings, todayYmd)
+  if (openThis) {
+    return { targetMonthFirst: thisMonth, periodSel: openThis.sel }
+  }
+  const nextMonth = addOneMonthFirst(thisMonth)
+  const openNext = findFirstOpenPeriodInMonth(nextMonth, settings, todayYmd)
+  if (openNext) {
+    return { targetMonthFirst: nextMonth, periodSel: openNext.sel }
+  }
+  return {
+    targetMonthFirst: thisMonth,
+    periodSel: defaultPeriodSelForMonth(settings, thisMonth),
+  }
+}
+
 export function defaultTargetMonth(): string {
   const n = new Date()
   return formatYmd(new Date(n.getFullYear(), n.getMonth(), 1))

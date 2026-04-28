@@ -9,6 +9,8 @@ import {
 } from '@/app/(shift)/request/actions'
 import {
   computeDeadlineYmd,
+  defaultPeriodSelForMonth,
+  findFirstOpenPeriodInMonth,
   isDeadlineExpiredVsToday,
   listHalfHourOptions,
   listPeriodsWithDeadlines,
@@ -17,6 +19,7 @@ import {
   pairBiweeklySlices,
   parseYmd,
   periodSelEquals,
+  resolveDefaultRequestMonthAndPeriod,
   resolveGridForSelection,
   type PeriodDeadlineInfo,
   type PeriodSel,
@@ -43,33 +46,6 @@ function formatJaLong(ymd: string): string {
     day: 'numeric',
     weekday: 'short',
   }).format(d)
-}
-
-function defaultPeriodSel(
-  settings: ShiftSetting,
-  weekSlices: ReturnType<typeof listWeekSlicesInMonth>,
-  biweeks: ReturnType<typeof pairBiweeklySlices>
-): PeriodSel {
-  switch (settings.shift_cycle) {
-    case 'semimonthly':
-      return { kind: 'semimonthly', phase: 'first_half' }
-    case 'monthly':
-      return { kind: 'monthly' }
-    case 'weekly': {
-      const w0 = weekSlices[0]
-      return w0
-        ? { kind: 'weekly', weekId: w0.id }
-        : { kind: 'monthly' }
-    }
-    case 'biweekly': {
-      const b0 = biweeks[0]
-      return b0
-        ? { kind: 'biweekly', biweekId: b0.id }
-        : { kind: 'monthly' }
-    }
-    default:
-      return { kind: 'monthly' }
-  }
 }
 
 function requestToRow(r: ShiftRequest, half: number[]): RowVals {
@@ -177,6 +153,16 @@ export function RequestShiftClient(props: Props) {
   const targetMonthFirstYm0 = `${ym0}-01`
   const targetMonthFirstYm1 = `${ym1}-01`
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const q = new URLSearchParams(window.location.search)
+    if (q.get('ym')) return
+    const preferred = resolveDefaultRequestMonthAndPeriod(settings, todayStr)
+    if (preferred.targetMonthFirst !== targetMonthFirst) {
+      router.replace(`/request?ym=${preferred.targetMonthFirst.slice(0, 7)}`)
+    }
+  }, [router, settings, targetMonthFirst, todayStr])
+
   const month0HasOpen = monthHasAnyOpenPeriod(
     targetMonthFirstYm0,
     settings,
@@ -212,16 +198,17 @@ export function RequestShiftClient(props: Props) {
     [settings.gantt_end_minutes, settings.gantt_start_minutes]
   )
 
-  const [periodSel, setPeriodSel] = useState<PeriodSel>(() =>
-    defaultPeriodSel(settings, weeks, biweeks)
-  )
+  const [periodSel, setPeriodSel] = useState<PeriodSel>(() => {
+    const open = findFirstOpenPeriodInMonth(targetMonthFirst, settings, todayStr)
+    return open?.sel ?? defaultPeriodSelForMonth(settings, targetMonthFirst)
+  })
 
   useEffect(() => {
     const periods = listPeriodsWithDeadlines(targetMonthFirst, settings)
     const open = periods.filter(
       (p) => !isDeadlineExpiredVsToday(p.deadlineYmd, todayStr)
     )
-    const def = defaultPeriodSel(settings, weeks, biweeks)
+    const def = defaultPeriodSelForMonth(settings, targetMonthFirst)
     const defMeta = periods.find((p) => periodSelEquals(p.sel, def))
     const defOk =
       !!defMeta && !isDeadlineExpiredVsToday(defMeta.deadlineYmd, todayStr)
@@ -233,13 +220,7 @@ export function RequestShiftClient(props: Props) {
       if (open[0]) return open[0].sel
       return def
     })
-  }, [
-    biweeks,
-    settings,
-    targetMonthFirst,
-    todayStr,
-    weeks,
-  ])
+  }, [settings, targetMonthFirst, todayStr])
 
   const grid = useMemo(
     () => resolveGridForSelection(targetMonthFirst, settings, periodSel),
