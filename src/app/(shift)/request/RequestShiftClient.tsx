@@ -26,6 +26,7 @@ import {
   type PeriodSettingsForRequest,
   weekStartsOnFromSettings,
   ymParamToTargetFirst,
+  addOneMonthFirst,
 } from '@/lib/shift-request-periods'
 import type { SessionUser } from '@/lib/auth'
 import type { ShiftPattern, ShiftRequest, ShiftSetting } from '@/types/database'
@@ -206,21 +207,18 @@ export function RequestShiftClient(props: Props) {
   const initPeriodKeyRef = useRef(periodSelKey(initialPeriodSel))
   const ym = ymParamToTargetFirst(ymQuery) ?? targetMonthFirst.slice(0, 7)
 
-  const ymNow = new Date()
-  const ym0 = `${ymNow.getFullYear()}-${String(ymNow.getMonth() + 1).padStart(2, '0')}`
-  const d1 = new Date(ymNow.getFullYear(), ymNow.getMonth() + 1, 1)
-  const ym1 = `${d1.getFullYear()}-${String(d1.getMonth() + 1).padStart(2, '0')}`
-
-  const targetMonthFirstYm0 = `${ym0}-01`
-  const targetMonthFirstYm1 = `${ym1}-01`
+  const thisMonthFirst = `${todayYmd.slice(0, 7)}-01`
+  const nextMonthFirst = addOneMonthFirst(thisMonthFirst)
+  const ymThis = todayYmd.slice(0, 7)
+  const ymNext = nextMonthFirst.slice(0, 7)
 
   const month0HasOpen = monthHasAnyOpenPeriod(
-    targetMonthFirstYm0,
+    thisMonthFirst,
     settings,
     todayYmd
   )
   const month1HasOpen = monthHasAnyOpenPeriod(
-    targetMonthFirstYm1,
+    nextMonthFirst,
     settings,
     todayYmd
   )
@@ -468,7 +466,22 @@ export function RequestShiftClient(props: Props) {
     }
   }, [biweeks, periodSel, settings.shift_cycle, weeks])
 
-  const [headerExpanded, setHeaderExpanded] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const staffName = session.staff_name?.trim() ?? ''
+
+  useEffect(() => {
+    if (!isMenuOpen) return
+    function onDocPointerDown(ev: PointerEvent | MouseEvent) {
+      const t = ev.target
+      if (!(t instanceof Node)) return
+      if (menuRef.current?.contains(t)) return
+      setIsMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', onDocPointerDown, true)
+    return () =>
+      document.removeEventListener('pointerdown', onDocPointerDown, true)
+  }, [isMenuOpen])
 
   const halfBtnActive =
     'rounded-md bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors'
@@ -607,121 +620,122 @@ export function RequestShiftClient(props: Props) {
       </div>
     ) : null
 
-  const MONTH_NAV_ACTIVE =
-    'rounded-md bg-slate-700 px-4 py-1.5 text-sm font-semibold text-white transition-colors'
-  const MONTH_NAV_INACTIVE =
-    'rounded-md border border-zinc-200 px-4 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
-  const MONTH_NAV_EXPIRED =
-    'rounded-md border border-zinc-200 px-4 py-1.5 text-sm text-zinc-400 cursor-not-allowed opacity-40'
+  const monthJumpExpired =
+    'rounded-md border border-zinc-200 px-4 py-1.5 text-sm font-semibold text-zinc-400 cursor-not-allowed opacity-40'
+  const monthJumpSelected =
+    'rounded-md bg-slate-700 px-4 py-1.5 text-sm font-semibold text-white border border-slate-700 transition-colors'
+  const monthJumpIdle =
+    'rounded-md border border-zinc-200 px-4 py-1.5 text-sm font-semibold text-zinc-600 bg-white transition-colors hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed'
 
-  function monthNavClass(active: boolean, expired: boolean): string {
-    if (expired) return MONTH_NAV_EXPIRED
-    if (active) return MONTH_NAV_ACTIVE
-    return MONTH_NAV_INACTIVE
+  function monthJumpClass(selected: boolean, expired: boolean): string {
+    if (expired) return monthJumpExpired
+    return selected ? monthJumpSelected : monthJumpIdle
   }
+
+  const isThisMonthSelected = targetMonthFirst === thisMonthFirst
+  const isNextMonthSelected = targetMonthFirst === nextMonthFirst
 
   return (
     <div className="flex min-h-full flex-col bg-zinc-50 pb-24">
       <header className="sticky top-0 z-10 border-b border-zinc-100 bg-white/95 backdrop-blur-sm shadow-sm">
-        {!headerExpanded ? (
-          <div className="mx-auto flex w-full max-w-lg items-center justify-between gap-2 px-4 py-2">
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-3 px-4 py-2">
+          <div className="flex flex-wrap items-start gap-2">
+            <div className="relative shrink-0" ref={menuRef}>
+              <button
+                type="button"
+                className="p-2 rounded-md hover:bg-zinc-100 text-zinc-600"
+                aria-label="メニュー"
+                aria-expanded={isMenuOpen}
+                onClick={() => setIsMenuOpen((v) => !v)}
+              >
+                ☰
+              </button>
+              {isMenuOpen ? (
+                <div className="absolute left-0 top-full mt-1 w-48 bg-white border border-zinc-200 rounded-lg shadow-md z-50">
+                  {storeCount >= 2 ? (
+                    <Link
+                      href="/login/select-store"
+                      className="block w-full text-left px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      店舗切り替え
+                    </Link>
+                  ) : null}
+                  <Link
+                    href="/schedule"
+                    className="block w-full text-left px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    シフト表へ
+                  </Link>
+                  <button
+                    type="button"
+                    className="w-full text-left px-4 py-3 text-sm text-rose-600 hover:bg-rose-50"
+                    onClick={() => {
+                      setIsMenuOpen(false)
+                      void logoutAndRedirectToLogin()
+                    }}
+                  >
+                    ログアウト
+                  </button>
+                </div>
+              ) : null}
+            </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-zinc-800">
                 {monthSummaryLabel} · {periodSummaryLabel}
               </p>
-              <p className="mt-0.5 truncate text-xs text-zinc-500">
-                締切 {formatJaLong(deadlineYmd)}
-              </p>
             </div>
+            {staffName ? (
+              <span className="shrink-0 text-sm text-zinc-500">{staffName}</span>
+            ) : null}
+          </div>
+
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-zinc-500">締め切り</p>
+            <p className="text-sm font-bold text-rose-600">
+              {formatJaLong(deadlineYmd)}
+            </p>
+            <p className="mt-0.5 text-xs text-zinc-400">
+              {settings.deadline_type === 'days_before'
+                ? `期間開始日の ${settings.deadline_value} 日前まで`
+                : settings.deadline_type === 'weeks_before'
+                  ? `期間開始日の ${settings.deadline_value} 週前まで`
+                  : `期間開始日の ${settings.deadline_value} か月前まで`}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className="shrink-0 rounded-md px-2 py-1 text-xs text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-600"
-              onClick={() => setHeaderExpanded(true)}
+              disabled={!month0HasOpen}
+              onClick={() => {
+                if (month0HasOpen) router.push(`/request?ym=${ymThis}`)
+              }}
+              className={monthJumpClass(
+                isThisMonthSelected,
+                !month0HasOpen
+              )}
             >
-              ▼ 設定を表示
+              今月
             </button>
-          </div>
-        ) : (
-          <div className="mx-auto flex w-full max-w-lg flex-col gap-3 px-4 py-2">
-            <div className="flex flex-wrap items-end justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-zinc-500">
-                  締め切り
-                </p>
-                <p className="text-sm font-bold text-rose-600">
-                  {formatJaLong(deadlineYmd)}
-                </p>
-                <p className="mt-0.5 text-xs text-zinc-400">
-                  {settings.deadline_type === 'days_before'
-                    ? `期間開始日の ${settings.deadline_value} 日前まで`
-                    : settings.deadline_type === 'weeks_before'
-                      ? `期間開始日の ${settings.deadline_value} 週前まで`
-                      : `期間開始日の ${settings.deadline_value} か月前まで`}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 text-right">
-                <div className="text-sm">
-                  <p className="text-xs text-zinc-500">ログイン中</p>
-                  <p className="font-medium text-zinc-900">{session.staff_name}</p>
-                </div>
-                {storeCount >= 2 ? (
-                  <Link
-                    href="/login/select-store"
-                    className="rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
-                  >
-                    店舗切り替え
-                  </Link>
-                ) : null}
-                <Link
-                  href="/schedule"
-                  className="rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
-                >
-                  シフト表へ
-                </Link>
-                <button
-                  type="button"
-                  className="text-xs text-zinc-400 transition-colors hover:text-zinc-600"
-                  onClick={() => void logoutAndRedirectToLogin()}
-                >
-                  ログアウト
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={!month0HasOpen}
-                onClick={() => {
-                  if (month0HasOpen) router.push(`/request?ym=${ym0}`)
-                }}
-                className={monthNavClass(ym === ym0, !month0HasOpen)}
-              >
-                今月
-              </button>
-              <button
-                type="button"
-                disabled={!month1HasOpen}
-                onClick={() => {
-                  if (month1HasOpen) router.push(`/request?ym=${ym1}`)
-                }}
-                className={monthNavClass(ym === ym1, !month1HasOpen)}
-              >
-                来月
-              </button>
-            </div>
-
-            {periodControl}
-
             <button
               type="button"
-              className="w-full rounded-md border border-zinc-200 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-50"
-              onClick={() => setHeaderExpanded(false)}
+              disabled={!month1HasOpen}
+              onClick={() => {
+                if (month1HasOpen) router.push(`/request?ym=${ymNext}`)
+              }}
+              className={monthJumpClass(
+                isNextMonthSelected,
+                !month1HasOpen
+              )}
             >
-              ▲ 設定を閉じる
+              来月
             </button>
           </div>
-        )}
+
+          {periodControl}
+        </div>
       </header>
 
       <main className="mx-auto w-full max-w-lg px-3 py-4">
