@@ -441,31 +441,6 @@ export function RequestShiftClient(props: Props) {
     [targetMonthFirst]
   )
 
-  const periodSummaryLabel = useMemo(() => {
-    switch (settings.shift_cycle) {
-      case 'monthly':
-        return '全期間（月初〜月末）'
-      case 'semimonthly':
-        return periodSel.kind === 'semimonthly' && periodSel.phase === 'second_half'
-          ? '後半（16日〜月末）'
-          : '前半（1〜15日）'
-      case 'weekly': {
-        const id =
-          periodSel.kind === 'weekly' ? periodSel.weekId : weeks[0]?.id
-        const w = weeks.find((x) => x.id === id)
-        return w?.label ?? weeks[0]?.label ?? '対象週'
-      }
-      case 'biweekly': {
-        const id =
-          periodSel.kind === 'biweekly' ? periodSel.biweekId : biweeks[0]?.id
-        const b = biweeks.find((x) => x.id === id)
-        return b?.label ?? biweeks[0]?.label ?? '対象期間（2週）'
-      }
-      default:
-        return ''
-    }
-  }, [biweeks, periodSel, settings.shift_cycle, weeks])
-
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const staffName = session.staff_name?.trim() ?? ''
@@ -492,74 +467,76 @@ export function RequestShiftClient(props: Props) {
 
   const periodControl =
     settings.shift_cycle === 'monthly' ? (
-      <div className="flex flex-col gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-xs font-medium text-zinc-500">対象期間</span>
         <p className="text-sm font-medium text-zinc-800">全期間（月初〜月末）</p>
       </div>
     ) : settings.shift_cycle === 'semimonthly' ? (
-      <div className="flex flex-col gap-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         <span className="text-xs font-medium text-zinc-500">対象期間</span>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={deadlinePassedForSel(
+        <button
+          type="button"
+          disabled={deadlinePassedForSel(
+            periodDeadlineInfos,
+            { kind: 'semimonthly', phase: 'first_half' },
+            todayYmd
+          )}
+          className={
+            deadlinePassedForSel(
               periodDeadlineInfos,
               { kind: 'semimonthly', phase: 'first_half' },
               todayYmd
-            )}
-            className={
-              deadlinePassedForSel(
-                periodDeadlineInfos,
-                { kind: 'semimonthly', phase: 'first_half' },
-                todayYmd
-              )
-                ? halfBtnExpired
-                : periodSel.kind === 'semimonthly' &&
-                    periodSel.phase === 'first_half'
-                  ? halfBtnActive
-                  : halfBtnInactive
-            }
-            onClick={() =>
-              setPeriodSel({ kind: 'semimonthly', phase: 'first_half' })
-            }
-          >
-            前半（1〜15日）
-          </button>
-          <button
-            type="button"
-            disabled={deadlinePassedForSel(
+            )
+              ? halfBtnExpired
+              : periodSel.kind === 'semimonthly' &&
+                  periodSel.phase === 'first_half'
+                ? halfBtnActive
+                : halfBtnInactive
+          }
+          onClick={() =>
+            setPeriodSel({ kind: 'semimonthly', phase: 'first_half' })
+          }
+        >
+          前半（1〜15日）
+        </button>
+        <button
+          type="button"
+          disabled={deadlinePassedForSel(
+            periodDeadlineInfos,
+            { kind: 'semimonthly', phase: 'second_half' },
+            todayYmd
+          )}
+          className={
+            deadlinePassedForSel(
               periodDeadlineInfos,
               { kind: 'semimonthly', phase: 'second_half' },
               todayYmd
-            )}
-            className={
-              deadlinePassedForSel(
-                periodDeadlineInfos,
-                { kind: 'semimonthly', phase: 'second_half' },
-                todayYmd
-              )
-                ? halfBtnExpired
-                : periodSel.kind === 'semimonthly' &&
-                    periodSel.phase === 'second_half'
-                  ? halfBtnActive
-                  : halfBtnInactive
-            }
-            onClick={() =>
-              setPeriodSel({ kind: 'semimonthly', phase: 'second_half' })
-            }
-          >
-            後半（16日〜月末）
-          </button>
-        </div>
+            )
+              ? halfBtnExpired
+              : periodSel.kind === 'semimonthly' &&
+                  periodSel.phase === 'second_half'
+                ? halfBtnActive
+                : halfBtnInactive
+          }
+          onClick={() =>
+            setPeriodSel({ kind: 'semimonthly', phase: 'second_half' })
+          }
+        >
+          後半（16日〜月末）
+        </button>
       </div>
     ) : settings.shift_cycle === 'weekly' ? (
-      <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium text-zinc-500">対象週</span>
-        {weeks.length === 0 ? (
-          <p className="text-sm text-amber-800">この月に表示できる週がありません。</p>
-        ) : (
+      weeks.length === 0 ? (
+        <p className="min-w-0 flex-1 text-sm text-amber-800">
+          この月に表示できる週がありません。
+        </p>
+      ) : (
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="shrink-0 text-xs font-medium text-zinc-500">
+            対象週
+          </span>
           <select
-            className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-700 focus:outline-none focus:ring-1 focus:ring-slate-400 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-700 focus:outline-none focus:ring-1 focus:ring-slate-400 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             value={
               periodSel.kind === 'weekly'
                 ? periodSel.weekId
@@ -583,16 +560,20 @@ export function RequestShiftClient(props: Props) {
               )
             })}
           </select>
-        )}
-      </div>
+        </div>
+      )
     ) : settings.shift_cycle === 'biweekly' ? (
-      <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium text-zinc-500">対象期間（2週）</span>
-        {biweeks.length === 0 ? (
-          <p className="text-sm text-amber-800">この月に表示できる2週ブロックがありません。</p>
-        ) : (
+      biweeks.length === 0 ? (
+        <p className="min-w-0 flex-1 text-sm text-amber-800">
+          この月に表示できる2週ブロックがありません。
+        </p>
+      ) : (
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="shrink-0 text-xs font-medium text-zinc-500">
+            対象期間（2週）
+          </span>
           <select
-            className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-700 focus:outline-none focus:ring-1 focus:ring-slate-400 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-700 focus:outline-none focus:ring-1 focus:ring-slate-400 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             value={
               periodSel.kind === 'biweekly'
                 ? periodSel.biweekId
@@ -616,8 +597,8 @@ export function RequestShiftClient(props: Props) {
               )
             })}
           </select>
-        )}
-      </div>
+        </div>
+      )
     ) : null
 
   const monthJumpExpired =
@@ -637,8 +618,8 @@ export function RequestShiftClient(props: Props) {
 
   return (
     <div className="flex min-h-full flex-col bg-zinc-50 pb-24">
-      <header className="sticky top-0 z-10 border-b border-zinc-100 bg-white/95 backdrop-blur-sm shadow-sm">
-        <div className="mx-auto flex w-full max-w-lg flex-col gap-3 px-4 py-2">
+      <div className="sticky top-0 z-50 border-b border-zinc-100 bg-white shadow-sm">
+        <div className="mx-auto w-full max-w-lg px-4 py-2">
           <div className="flex flex-wrap items-start gap-2">
             <div className="relative shrink-0" ref={menuRef}>
               <button
@@ -683,60 +664,61 @@ export function RequestShiftClient(props: Props) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-zinc-800">
-                {monthSummaryLabel} · {periodSummaryLabel}
+                {monthSummaryLabel}
               </p>
             </div>
             {staffName ? (
               <span className="shrink-0 text-sm text-zinc-500">{staffName}</span>
             ) : null}
           </div>
+        </div>
+      </div>
 
-          <div className="min-w-0">
-            <p className="truncate text-xs font-medium text-zinc-500">締め切り</p>
-            <p className="text-sm font-bold text-rose-600">
-              {formatJaLong(deadlineYmd)}
-            </p>
-            <p className="mt-0.5 text-xs text-zinc-400">
-              {settings.deadline_type === 'days_before'
-                ? `期間開始日の ${settings.deadline_value} 日前まで`
-                : settings.deadline_type === 'weeks_before'
-                  ? `期間開始日の ${settings.deadline_value} 週前まで`
-                  : `期間開始日の ${settings.deadline_value} か月前まで`}
-            </p>
-          </div>
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-3 bg-white px-4 py-2">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-zinc-500">締め切り</p>
+          <p className="text-sm font-bold text-rose-600">
+            {formatJaLong(deadlineYmd)}
+          </p>
+          <p className="mt-0.5 text-xs text-zinc-400">
+            {settings.deadline_type === 'days_before'
+              ? `期間開始日の ${settings.deadline_value} 日前まで`
+              : settings.deadline_type === 'weeks_before'
+                ? `期間開始日の ${settings.deadline_value} 週前まで`
+                : `期間開始日の ${settings.deadline_value} か月前まで`}
+          </p>
+        </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={!month0HasOpen}
-              onClick={() => {
-                if (month0HasOpen) router.push(`/request?ym=${ymThis}`)
-              }}
-              className={monthJumpClass(
-                isThisMonthSelected,
-                !month0HasOpen
-              )}
-            >
-              今月
-            </button>
-            <button
-              type="button"
-              disabled={!month1HasOpen}
-              onClick={() => {
-                if (month1HasOpen) router.push(`/request?ym=${ymNext}`)
-              }}
-              className={monthJumpClass(
-                isNextMonthSelected,
-                !month1HasOpen
-              )}
-            >
-              来月
-            </button>
-          </div>
-
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={!month0HasOpen}
+            onClick={() => {
+              if (month0HasOpen) router.push(`/request?ym=${ymThis}`)
+            }}
+            className={`${monthJumpClass(
+              isThisMonthSelected,
+              !month0HasOpen
+            )} shrink-0`}
+          >
+            今月
+          </button>
+          <button
+            type="button"
+            disabled={!month1HasOpen}
+            onClick={() => {
+              if (month1HasOpen) router.push(`/request?ym=${ymNext}`)
+            }}
+            className={`${monthJumpClass(
+              isNextMonthSelected,
+              !month1HasOpen
+            )} shrink-0`}
+          >
+            来月
+          </button>
           {periodControl}
         </div>
-      </header>
+      </div>
 
       <main className="mx-auto w-full max-w-lg px-3 py-4">
         <h2 className="mb-2 text-sm font-semibold text-zinc-700">希望シフト</h2>
