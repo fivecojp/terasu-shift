@@ -1,6 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { createPortal } from 'react-dom'
 import type { Shift, ShiftPattern, ShiftRequest } from '@/types/database'
 import { formatShiftTimeRangeCompact } from '@/lib/jst-shift-time'
 import { minutesToShort } from '@/lib/time'
@@ -125,6 +133,14 @@ export function ScheduleGrid({
   const scrollRef = useRef<HTMLDivElement>(null)
   const todayColIndex = columnDates.indexOf(todayStr)
   const [openRibbonKey, setOpenRibbonKey] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const [hoverRibbonKey, setHoverRibbonKey] = useState<string | null>(null)
+  const [focusRibbonKey, setFocusRibbonKey] = useState<string | null>(null)
+  const [ribbonPopupPos, setRibbonPopupPos] = useState<{
+    top: number
+    right: number
+  } | null>(null)
+  const ribbonAnchorsRef = useRef<Map<string, HTMLDivElement>>(new Map())
   const [requestConfirm, setRequestConfirm] = useState<{
     staffId: string
     staffName: string
@@ -148,6 +164,17 @@ export function ScheduleGrid({
   const toggleRibbon = useCallback((key: string) => {
     setOpenRibbonKey((prev) => (prev === key ? null : key))
   }, [])
+
+  const registerRibbonAnchor = useCallback(
+    (key: string, el: HTMLDivElement | null) => {
+      const m = ribbonAnchorsRef.current
+      if (el) m.set(key, el)
+      else m.delete(key)
+    },
+    []
+  )
+
+  useEffect(() => setMounted(true), [])
 
   const handleDateHeaderClick = useCallback(
     (date: string) => {
@@ -190,6 +217,47 @@ export function ScheduleGrid({
       document.removeEventListener('pointerdown', handleDocPointerDown, true)
   }, [openRibbonKey])
 
+  const activeRibbonKey =
+    openRibbonKey ?? hoverRibbonKey ?? focusRibbonKey ?? null
+
+  useLayoutEffect(() => {
+    if (activeRibbonKey === null) {
+      setRibbonPopupPos(null)
+      return
+    }
+    const ribbonKey = activeRibbonKey
+    const summary = requestMap.get(ribbonKey)
+    if (!summary || summary.request_type === 'off') {
+      setRibbonPopupPos(null)
+      return
+    }
+
+    function update() {
+      const anchor = ribbonAnchorsRef.current.get(ribbonKey)
+      if (!anchor || typeof window === 'undefined') return
+      const rect = anchor.getBoundingClientRect()
+      setRibbonPopupPos({
+        top: rect.top + 12,
+        right: window.innerWidth - rect.right,
+      })
+    }
+
+    update()
+    if (!ribbonAnchorsRef.current.get(ribbonKey)) {
+      requestAnimationFrame(() => update())
+    }
+
+    scrollRef.current?.addEventListener('scroll', update)
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+
+    return () => {
+      scrollRef.current?.removeEventListener('scroll', update)
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [activeRibbonKey, requestMap])
+
   useEffect(() => {
     if (scrollRef.current === null || todayColIndex < 0) return
     const container = scrollRef.current
@@ -200,6 +268,16 @@ export function ScheduleGrid({
     const targetScrollLeft = todayLeft - containerWidth / 2 + DATE_COL_WIDTH / 2
     container.scrollLeft = Math.max(0, targetScrollLeft)
   }, [columnDates, todayColIndex])
+
+  const ribbonPopupSummary =
+    activeRibbonKey !== null ? requestMap.get(activeRibbonKey) ?? null : null
+
+  const showRibbonPopover =
+    mounted &&
+    activeRibbonKey !== null &&
+    ribbonPopupPos !== null &&
+    ribbonPopupSummary !== null &&
+    ribbonPopupSummary.request_type !== 'off'
 
   return (
     <>
@@ -295,7 +373,7 @@ export function ScheduleGrid({
                   return (
                     <td
                       key={`${s.staff_id}_${d}`}
-                      className={`relative border-b border-r border-zinc-100 px-1 py-1 text-center align-middle text-xs ${
+                      className={`relative overflow-hidden border-b border-r border-zinc-100 px-1 py-1 text-center align-middle text-xs ${
                         cellInteractive
                           ? 'cursor-pointer hover:bg-zinc-50'
                           : 'cursor-default'
@@ -314,8 +392,15 @@ export function ScheduleGrid({
                     >
                       {summaryReq && summaryReq.request_type !== 'off' ? (
                         <div
-                          className="group absolute right-0 top-0 z-10"
+                          ref={(el) => registerRibbonAnchor(ribbonKey, el)}
+                          className="absolute right-0 top-0 z-10"
                           data-request-ribbon={ribbonKey}
+                          onMouseEnter={() => setHoverRibbonKey(ribbonKey)}
+                          onMouseLeave={() =>
+                            setHoverRibbonKey((h) =>
+                              h === ribbonKey ? null : h
+                            )
+                          }
                         >
                           <button
                             type="button"
@@ -326,24 +411,27 @@ export function ScheduleGrid({
                               e.stopPropagation()
                               toggleRibbon(ribbonKey)
                             }}
+                            onFocus={() => setFocusRibbonKey(ribbonKey)}
+                            onBlur={(e) => {
+                              const next = e.relatedTarget as Node | null
+                              const root = ribbonAnchorsRef.current.get(
+                                ribbonKey
+                              )
+                              if (
+                                root &&
+                                !(next instanceof Node && root.contains(next))
+                              ) {
+                                setFocusRibbonKey((f) =>
+                                  f === ribbonKey ? null : f
+                                )
+                              }
+                            }}
                           >
                             <span
                               className="block h-0 w-0 border-l-[10px] border-t-[10px] border-l-transparent border-t-emerald-400 cursor-pointer"
                               aria-hidden
                             />
                           </button>
-                          <div
-                            className={`pointer-events-none absolute right-0 top-3 z-50 rounded border border-zinc-200 bg-white px-2 py-1 text-xs whitespace-nowrap text-zinc-700 shadow-md ${
-                              openRibbonKey === ribbonKey
-                                ? 'block'
-                                : 'hidden group-focus-within:block group-hover:block'
-                            }`}
-                          >
-                            <span className="mr-1 text-[10px] text-zinc-400">
-                              希望:
-                            </span>
-                            {formatRequestLabel(summaryReq, patternsList)}
-                          </div>
                         </div>
                       ) : null}
                       {showReq ? (
@@ -386,6 +474,25 @@ export function ScheduleGrid({
         </table>
       </div>
     </div>
+
+    {showRibbonPopover &&
+    activeRibbonKey &&
+    ribbonPopupPos &&
+    ribbonPopupSummary ? (
+      createPortal(
+        <div
+          className="pointer-events-none fixed z-50 rounded border border-zinc-200 bg-white px-2 py-1 text-xs whitespace-nowrap text-zinc-700 shadow-md"
+          style={{
+            top: ribbonPopupPos.top,
+            right: ribbonPopupPos.right,
+          }}
+        >
+          <span className="mr-1 text-[10px] text-zinc-400">希望:</span>
+          {formatRequestLabel(ribbonPopupSummary, patternsList)}
+        </div>,
+        document.body
+      )
+    ) : null}
 
     {requestConfirm ? (
       <div
