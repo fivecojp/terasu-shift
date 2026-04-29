@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useCallback, useMemo, useState } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { SessionUser } from '@/lib/auth'
 import {
   buildSchedulePath,
@@ -70,6 +70,9 @@ type Props = SchedulePageData & {
 
 export function ScheduleClient(init: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
   const {
     session,
     role,
@@ -92,6 +95,10 @@ export function ScheduleClient(init: Props) {
   const [ganttWorkDate, setGanttWorkDate] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [isNavigating, setIsNavigating] = useState(false)
+
+  useEffect(() => {
+    setIsNavigating(false)
+  }, [pathname, searchParams])
 
   const effectiveViewMode =
     role === 'general' ? 'shift' : viewMode
