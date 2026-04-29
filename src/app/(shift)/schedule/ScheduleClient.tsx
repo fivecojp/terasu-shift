@@ -514,6 +514,20 @@ export function ScheduleClient(init: Props) {
     )
   }, [columnDates])
 
+  const todayYmdJst = Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Tokyo',
+  }).format(new Date()).slice(0, 10)
+  const currentMonthFirst = `${todayYmdJst.slice(0, 7)}-01`
+  const currentViewMonthFirst =
+    monthsInView.length > 0
+      ? monthsInView[0]!
+      : columnDates.length > 0
+        ? `${columnDates[0].slice(0, 7)}-01`
+        : `${viewStartYmd.slice(0, 7)}-01`
+  const isPrevDisabled =
+    role === 'general' && currentViewMonthFirst <= currentMonthFirst
+  const prevNavDisabled = isNavigating || isPrevDisabled
+
   const unsubmittedStaffIds = useMemo(() => {
     if (monthsInView.length === 0) return new Set<string>()
     const byStaff = new Map<string, Set<string>>()
@@ -671,10 +685,12 @@ export function ScheduleClient(init: Props) {
             <button
               type="button"
               aria-label="前の期間へ"
-              disabled={isNavigating}
+              disabled={prevNavDisabled}
               onClick={() => goMonthNav(prevPath)}
-              className={`flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors hover:border-zinc-300 hover:bg-zinc-50 ${
-                isNavigating ? 'pointer-events-none opacity-50' : ''
+              className={`flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors ${
+                prevNavDisabled
+                  ? 'pointer-events-none cursor-not-allowed opacity-40'
+                  : 'hover:border-zinc-300 hover:bg-zinc-50'
               }`}
             >
               {isNavigating ? <MonthNavSpinner /> : '‹'}
@@ -816,10 +832,12 @@ export function ScheduleClient(init: Props) {
           <button
             type="button"
             aria-label="前の期間へ"
-            disabled={isNavigating}
+            disabled={prevNavDisabled}
             onClick={() => goMonthNav(prevPath)}
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-50 ${
-              isNavigating ? 'pointer-events-none opacity-50' : ''
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors ${
+              prevNavDisabled
+                ? 'pointer-events-none cursor-not-allowed opacity-40'
+                : 'hover:bg-zinc-50'
             }`}
           >
             {isNavigating ? <MonthNavSpinner /> : '‹'}
@@ -896,13 +914,16 @@ export function ScheduleClient(init: Props) {
                   <button
                     type="button"
                     aria-label="前の期間へ"
-                    disabled={isNavigating}
+                    disabled={prevNavDisabled}
                     onClick={() => {
+                      if (prevNavDisabled) return
                       goMonthNav(prevPath)
                       setMenuOpen(false)
                     }}
-                    className={`flex h-8 w-8 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors hover:bg-white ${
-                      isNavigating ? 'pointer-events-none opacity-50' : ''
+                    className={`flex h-8 w-8 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors ${
+                      prevNavDisabled
+                        ? 'pointer-events-none cursor-not-allowed opacity-40'
+                        : 'hover:bg-white'
                     }`}
                   >
                     {isNavigating ? <MonthNavSpinner /> : '‹'}
