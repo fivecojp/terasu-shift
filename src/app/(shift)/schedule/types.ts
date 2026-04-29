@@ -13,6 +13,13 @@ export type StaffRow = {
   display_order: number
 }
 
+export type RequestEditTarget = {
+  staffId: string
+  staffName: string
+  workDate: string // YYYY-MM-DD
+  storeId: string
+}
+
 export type SchedulePageData = {
   storeName: string
   staff: StaffRow[]

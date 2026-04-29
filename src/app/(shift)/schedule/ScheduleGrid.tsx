@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom'
 import type { Shift, ShiftPattern, ShiftRequest } from '@/types/database'
 import { formatShiftTimeRangeCompact } from '@/lib/jst-shift-time'
 import { minutesToShort } from '@/lib/time'
-import type { StaffRow } from '@/app/(shift)/schedule/types'
+import type { StaffRow, RequestEditTarget } from '@/app/(shift)/schedule/types'
 
 export type RequestSummary = {
   staff_id: string
@@ -35,6 +35,8 @@ type Props = {
   allRequests: RequestSummary[]
   unsubmittedStaffIds: Set<string>
   onPickCell: (workDate: string) => void
+  storeId: string
+  onRequestCellClick?: (target: RequestEditTarget) => void
 }
 
 const WD = ['日', '月', '火', '水', '木', '金', '土'] as const
@@ -128,6 +130,8 @@ export function ScheduleGrid({
   allRequests,
   unsubmittedStaffIds,
   onPickCell,
+  storeId,
+  onRequestCellClick,
 }: Props) {
   const todayStr = new Date().toLocaleDateString('sv-SE')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -369,12 +373,16 @@ export function ScheduleGrid({
                   const showReq = mode === 'request'
                   const cellInteractive =
                     role === 'leader' && mode === 'shift'
+                  const requestCellClickable =
+                    onRequestCellClick !== undefined &&
+                    mode === 'request' &&
+                    role === 'leader'
 
                   return (
                     <td
                       key={`${s.staff_id}_${d}`}
                       className={`relative overflow-hidden border-b border-r border-zinc-100 px-1 py-1 text-center align-middle text-xs ${
-                        cellInteractive
+                        cellInteractive || requestCellClickable
                           ? 'cursor-pointer hover:bg-zinc-50'
                           : 'cursor-default'
                       }`}
@@ -382,7 +390,15 @@ export function ScheduleGrid({
                         cellInteractive
                           ? () =>
                               handleShiftCellClick(s.staff_id, s.staff_name, d)
-                          : undefined
+                          : requestCellClickable
+                            ? () =>
+                                onRequestCellClick({
+                                  staffId: s.staff_id,
+                                  staffName: s.staff_name,
+                                  workDate: d,
+                                  storeId,
+                                })
+                            : undefined
                       }
                       title={
                         showReq && req

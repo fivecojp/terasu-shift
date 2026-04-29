@@ -15,17 +15,21 @@ import {
   type ViewSpan,
 } from '@/lib/schedule-view-range'
 import type { ShiftPattern } from '@/types/database'
+import { displayToMinutes, minutesToDisplay, minutesToShort } from '@/lib/time'
 import {
   buildKeyedRequests,
   buildKeyedShifts,
+  type RequestEditTarget,
   type SchedulePageData,
   type StaffRow,
 } from '@/app/(shift)/schedule/types'
 import {
   buildScheduleCsv,
   deleteShiftAction,
+  deleteShiftRequestAction,
   publishSchedulePeriod,
   saveShiftFromMinutes,
+  upsertShiftRequestAction,
 } from '@/app/(shift)/schedule/actions'
 import {
   ScheduleGrid,
@@ -57,6 +61,369 @@ function MonthNavSpinner() {
         d="M4 12a8 8 0 018-8v8z"
       />
     </svg>
+  )
+}
+
+const WD_LABELS = ['日', '月', '火', '水', '木', '金', '土'] as const
+
+function formatWorkDateJa(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  return `${m}月${d}日（${WD_LABELS[dt.getDay()]}）`
+}
+
+function scheduleRequestSummaryLabel(
+  req: RequestSummary,
+  plist: ShiftPattern[]
+): string {
+  if (req.request_type === 'off') return '休み'
+  if (req.request_type === 'free') return '出勤可'
+  if (req.request_type === 'pattern') {
+    const p = plist.find((x) => x.shift_pattern_id === req.shift_pattern_id)
+    return p ? p.pattern_name : 'パターン'
+  }
+  if (req.request_type === 'custom') {
+    const s = req.custom_start_minutes
+    const e = req.custom_end_minutes
+    if (s !== null && e !== null) {
+      return `${minutesToShort(s)}〜${minutesToShort(e)}`
+    }
+    return 'その他'
+  }
+  return '希望あり'
+}
+
+type RequestEditModalProps = {
+  target: RequestEditTarget
+  allRequests: RequestSummary[]
+  patterns: ShiftPattern[]
+  ganttStart: number
+  ganttEnd: number
+  onClose: () => void
+}
+
+function RequestEditModal({
+  target,
+  allRequests,
+  patterns,
+  ganttStart,
+  ganttEnd,
+  onClose,
+}: RequestEditModalProps) {
+  const router = useRouter()
+  const activePatterns = useMemo(
+    () =>
+      [...patterns]
+        .filter((p) => p.is_active)
+        .sort((a, b) => a.display_order - b.display_order),
+    [patterns]
+  )
+
+  const [editRequestType, setEditRequestType] = useState<
+    'pattern' | 'free' | 'off' | 'custom'
+  >('off')
+  const [editPatternId, setEditPatternId] = useState<string | null>(null)
+  const [editCustomStart, setEditCustomStart] = useState(1080)
+  const [editCustomEnd, setEditCustomEnd] = useState(1500)
+  const [isSavingRequest, setIsSavingRequest] = useState(false)
+  const [isDeletingRequest, setIsDeletingRequest] = useState(false)
+
+  const timeOptions = useMemo(() => {
+    const opts: number[] = []
+    for (let m = ganttStart; m <= ganttEnd; m += 30) {
+      opts.push(m)
+    }
+    return opts
+  }, [ganttStart, ganttEnd])
+
+  const existingSummary = useMemo(
+    () =>
+      allRequests.find(
+        (r) => r.staff_id === target.staffId && r.work_date === target.workDate
+      ),
+    [allRequests, target.staffId, target.workDate]
+  )
+
+  useEffect(() => {
+    const ex = allRequests.find(
+      (r) => r.staff_id === target.staffId && r.work_date === target.workDate
+    )
+    if (!ex) {
+      setEditRequestType('off')
+      setEditPatternId(activePatterns[0]?.shift_pattern_id ?? null)
+      setEditCustomStart(1080)
+      setEditCustomEnd(1500)
+      return
+    }
+    if (ex.request_type === 'pattern') {
+      setEditRequestType('pattern')
+      setEditPatternId(ex.shift_pattern_id)
+      setEditCustomStart(1080)
+      setEditCustomEnd(1500)
+      return
+    }
+    if (ex.request_type === 'free') {
+      setEditRequestType('free')
+      setEditPatternId(null)
+      setEditCustomStart(1080)
+      setEditCustomEnd(1500)
+      return
+    }
+    if (ex.request_type === 'off') {
+      setEditRequestType('off')
+      setEditPatternId(null)
+      setEditCustomStart(1080)
+      setEditCustomEnd(1500)
+      return
+    }
+    setEditRequestType('custom')
+    setEditPatternId(null)
+    setEditCustomStart(ex.custom_start_minutes ?? ganttStart)
+    setEditCustomEnd(
+      ex.custom_end_minutes ?? Math.min(ganttStart + 120, ganttEnd)
+    )
+  }, [target, allRequests, activePatterns, ganttStart, ganttEnd])
+
+  const hasExisting = Boolean(existingSummary)
+
+  const saveDisabled =
+    isSavingRequest ||
+    isDeletingRequest ||
+    (editRequestType === 'pattern' && !editPatternId) ||
+    (editRequestType === 'custom' && editCustomEnd <= editCustomStart)
+
+  async function handleSaveRequest() {
+    if (editRequestType === 'pattern' && !editPatternId) return
+    if (
+      editRequestType === 'custom' &&
+      editCustomEnd <= editCustomStart
+    )
+      return
+
+    setIsSavingRequest(true)
+    const targetMonth = `${target.workDate.slice(0, 7)}-01`
+    const res = await upsertShiftRequestAction({
+      store_id: target.storeId,
+      staff_id: target.staffId,
+      work_date: target.workDate,
+      target_month: targetMonth,
+      period_type: 'full',
+      request_type: editRequestType,
+      shift_pattern_id: editRequestType === 'pattern' ? editPatternId : null,
+      custom_start_minutes:
+        editRequestType === 'custom' ? editCustomStart : null,
+      custom_end_minutes: editRequestType === 'custom' ? editCustomEnd : null,
+    })
+    setIsSavingRequest(false)
+    if (res.error) {
+      alert(res.error)
+      return
+    }
+    onClose()
+    router.refresh()
+  }
+
+  async function handleDeleteRequest() {
+    if (!hasExisting) return
+    setIsDeletingRequest(true)
+    const res = await deleteShiftRequestAction({
+      store_id: target.storeId,
+      staff_id: target.staffId,
+      work_date: target.workDate,
+    })
+    setIsDeletingRequest(false)
+    if (res.error) {
+      alert(res.error)
+      return
+    }
+    onClose()
+    router.refresh()
+  }
+
+  const selectBtnOn = 'bg-slate-700 text-white'
+  const selectBtnOff =
+    'border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-colors'
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/40 pt-24"
+      role="dialog"
+      aria-modal
+      onClick={() => {
+        if (!isSavingRequest && !isDeletingRequest) onClose()
+      }}
+    >
+      <div
+        className="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between gap-2">
+          <div>
+            <div className="text-base font-medium text-zinc-900">
+              {target.staffName}
+            </div>
+            <div className="mt-0.5 text-sm text-zinc-500">
+              {formatWorkDateJa(target.workDate)}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="text-xl leading-none text-zinc-400 hover:text-zinc-600"
+            aria-label="閉じる"
+            disabled={isSavingRequest || isDeletingRequest}
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="mb-4">
+          <div className="text-xs text-zinc-500">既存の希望</div>
+          {existingSummary ? (
+            <div className="mt-1 text-sm text-zinc-800">
+              {scheduleRequestSummaryLabel(existingSummary, patterns)}
+            </div>
+          ) : (
+            <div className="mt-1 text-sm text-zinc-400">未登録</div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {activePatterns.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {activePatterns.map((p) => (
+                <button
+                  key={p.shift_pattern_id}
+                  type="button"
+                  disabled={isSavingRequest || isDeletingRequest}
+                  className={`rounded-md px-3 py-2 text-sm ${
+                    editRequestType === 'pattern' &&
+                    editPatternId === p.shift_pattern_id
+                      ? selectBtnOn
+                      : selectBtnOff
+                  }`}
+                  onClick={() => {
+                    setEditRequestType('pattern')
+                    setEditPatternId(p.shift_pattern_id)
+                  }}
+                >
+                  {p.pattern_name}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={isSavingRequest || isDeletingRequest}
+              className={`rounded-md px-3 py-2 text-sm ${
+                editRequestType === 'free' ? selectBtnOn : selectBtnOff
+              }`}
+              onClick={() => {
+                setEditRequestType('free')
+                setEditPatternId(null)
+              }}
+            >
+              終日
+            </button>
+            <button
+              type="button"
+              disabled={isSavingRequest || isDeletingRequest}
+              className={`rounded-md px-3 py-2 text-sm ${
+                editRequestType === 'off' ? selectBtnOn : selectBtnOff
+              }`}
+              onClick={() => {
+                setEditRequestType('off')
+                setEditPatternId(null)
+              }}
+            >
+              ×
+            </button>
+            <button
+              type="button"
+              disabled={isSavingRequest || isDeletingRequest}
+              className={`rounded-md px-3 py-2 text-sm ${
+                editRequestType === 'custom' ? selectBtnOn : selectBtnOff
+              }`}
+              onClick={() => {
+                setEditRequestType('custom')
+                setEditPatternId(null)
+              }}
+            >
+              その他
+            </button>
+          </div>
+        </div>
+
+        {editRequestType === 'custom' ? (
+          <div className="mt-4 flex items-center gap-2">
+            <select
+              className="flex-1 rounded-md border border-zinc-200 px-2 py-2 text-sm"
+              value={minutesToDisplay(editCustomStart)}
+              disabled={isSavingRequest || isDeletingRequest}
+              onChange={(e) =>
+                setEditCustomStart(displayToMinutes(e.target.value))
+              }
+            >
+              {timeOptions.map((m) => (
+                <option key={m} value={minutesToDisplay(m)}>
+                  {minutesToDisplay(m)}
+                </option>
+              ))}
+            </select>
+            <span className="text-sm text-zinc-400">〜</span>
+            <select
+              className="flex-1 rounded-md border border-zinc-200 px-2 py-2 text-sm"
+              value={minutesToDisplay(editCustomEnd)}
+              disabled={isSavingRequest || isDeletingRequest}
+              onChange={(e) =>
+                setEditCustomEnd(displayToMinutes(e.target.value))
+              }
+            >
+              {timeOptions.map((m) => (
+                <option key={`e-${m}`} value={minutesToDisplay(m)}>
+                  {minutesToDisplay(m)}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            {hasExisting ? (
+              <button
+                type="button"
+                className="rounded-md border border-rose-300 px-4 py-2 text-sm text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-50"
+                disabled={isSavingRequest || isDeletingRequest}
+                onClick={() => void handleDeleteRequest()}
+              >
+                {isDeletingRequest ? '削除中...' : '削除'}
+              </button>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-md border border-zinc-200 px-4 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-50"
+              disabled={isSavingRequest || isDeletingRequest}
+              onClick={onClose}
+            >
+              キャンセル
+            </button>
+            <button
+              type="button"
+              className="rounded-md bg-slate-700 px-4 py-2 text-sm text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={saveDisabled}
+              onClick={() => void handleSaveRequest()}
+            >
+              {isSavingRequest ? '保存中...' : '保存'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -96,6 +463,8 @@ export function ScheduleClient(init: Props) {
 
   const [viewMode, setViewMode] = useState<'request' | 'shift'>('shift')
   const [ganttWorkDate, setGanttWorkDate] = useState<string | null>(null)
+  const [requestEditTarget, setRequestEditTarget] =
+    useState<RequestEditTarget | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [isNavigating, setIsNavigating] = useState(false)
 
@@ -187,6 +556,10 @@ export function ScheduleClient(init: Props) {
 
   const onPickCell = useCallback((workDate: string) => {
     setGanttWorkDate(workDate)
+  }, [])
+
+  const handleRequestCellClick = useCallback((target: RequestEditTarget) => {
+    setRequestEditTarget(target)
   }, [])
 
   const handleViewKindChange = useCallback(
@@ -631,10 +1004,29 @@ export function ScheduleClient(init: Props) {
           requestsKey={requestsKey}
           allRequests={allRequests}
           unsubmittedStaffIds={unsubmittedStaffIds}
+          storeId={session.store_id}
           onPickCell={(wd) => {
             if (effectiveViewMode === 'shift') onPickCell(wd)
           }}
+          onRequestCellClick={
+            role === 'leader' &&
+            effectiveViewMode === 'request' &&
+            publishStatus !== 'published'
+              ? handleRequestCellClick
+              : undefined
+          }
         />
+
+        {requestEditTarget ? (
+          <RequestEditModal
+            target={requestEditTarget}
+            allRequests={allRequests}
+            patterns={patterns}
+            ganttStart={settings.gantt_start_minutes}
+            ganttEnd={settings.gantt_end_minutes}
+            onClose={() => setRequestEditTarget(null)}
+          />
+        ) : null}
 
         {role === 'leader' &&
         ganttWorkDate &&

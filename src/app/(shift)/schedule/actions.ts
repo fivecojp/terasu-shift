@@ -246,3 +246,83 @@ export async function saveShiftFromMinutes(input: {
     shift_pattern_name: null,
   })
 }
+
+export async function upsertShiftRequestAction(data: {
+  store_id: string
+  staff_id: string
+  work_date: string
+  target_month: string
+  period_type: 'first_half' | 'second_half' | 'full'
+  request_type: 'pattern' | 'free' | 'off' | 'custom'
+  shift_pattern_id: string | null
+  custom_start_minutes: number | null
+  custom_end_minutes: number | null
+}): Promise<{ error: string | null }> {
+  const session = await requireLeader()
+  if (!session) return { error: '権限がありません' }
+  if (data.store_id !== session.store_id) {
+    return { error: '店舗が一致しません' }
+  }
+  if (data.request_type === 'pattern' && !data.shift_pattern_id) {
+    return { error: 'パターンを選択してください' }
+  }
+  if (
+    data.request_type === 'custom' &&
+    (data.custom_start_minutes === null ||
+      data.custom_end_minutes === null ||
+      data.custom_end_minutes <= data.custom_start_minutes)
+  ) {
+    return { error: '終了時刻は開始より後にしてください' }
+  }
+
+  const supabase = createServiceClient()
+  const submitted_at = new Date().toISOString()
+  const row = {
+    store_id: data.store_id,
+    staff_id: data.staff_id,
+    work_date: data.work_date,
+    target_month: data.target_month,
+    period_type: data.period_type,
+    request_type: data.request_type,
+    shift_pattern_id:
+      data.request_type === 'pattern' ? data.shift_pattern_id : null,
+    custom_start_minutes:
+      data.request_type === 'custom' ? data.custom_start_minutes : null,
+    custom_end_minutes:
+      data.request_type === 'custom' ? data.custom_end_minutes : null,
+    submitted_at,
+  }
+
+  const { error } = await supabase.from('shift_requests').upsert(row, {
+    onConflict: 'store_id,staff_id,work_date',
+  })
+  if (error) return { error: error.message }
+  revalidatePath('/schedule')
+  revalidatePath('/request')
+  return { error: null }
+}
+
+export async function deleteShiftRequestAction(data: {
+  store_id: string
+  staff_id: string
+  work_date: string
+}): Promise<{ error: string | null }> {
+  const session = await requireLeader()
+  if (!session) return { error: '権限がありません' }
+  if (data.store_id !== session.store_id) {
+    return { error: '店舗が一致しません' }
+  }
+
+  const supabase = createServiceClient()
+  const { error } = await supabase
+    .from('shift_requests')
+    .delete()
+    .eq('store_id', data.store_id)
+    .eq('staff_id', data.staff_id)
+    .eq('work_date', data.work_date)
+
+  if (error) return { error: error.message }
+  revalidatePath('/schedule')
+  revalidatePath('/request')
+  return { error: null }
+}
