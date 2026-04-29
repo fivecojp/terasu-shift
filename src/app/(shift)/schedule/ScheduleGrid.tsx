@@ -125,6 +125,12 @@ export function ScheduleGrid({
   const scrollRef = useRef<HTMLDivElement>(null)
   const todayColIndex = columnDates.indexOf(todayStr)
   const [openRibbonKey, setOpenRibbonKey] = useState<string | null>(null)
+  const [requestConfirm, setRequestConfirm] = useState<{
+    staffId: string
+    staffName: string
+    date: string
+    label: string
+  } | null>(null)
 
   const requestMap = useMemo(() => {
     const m = new Map<string, RequestSummary>()
@@ -142,6 +148,33 @@ export function ScheduleGrid({
   const toggleRibbon = useCallback((key: string) => {
     setOpenRibbonKey((prev) => (prev === key ? null : key))
   }, [])
+
+  const handleDateHeaderClick = useCallback(
+    (date: string) => {
+      if (role !== 'leader' || mode !== 'shift') return
+      onPickCell(date)
+    },
+    [mode, onPickCell, role]
+  )
+
+  const handleShiftCellClick = useCallback(
+    (staffId: string, staffName: string, date: string) => {
+      if (role !== 'leader') return
+      const key = `${staffId}_${date}`
+      const req = requestMap.get(key)
+      if (req) {
+        setRequestConfirm({
+          staffId,
+          staffName,
+          date,
+          label: formatRequestLabel(req, patternsList),
+        })
+      } else {
+        onPickCell(date)
+      }
+    },
+    [onPickCell, patternsList, requestMap, role]
+  )
 
   useEffect(() => {
     if (openRibbonKey === null) return
@@ -169,6 +202,7 @@ export function ScheduleGrid({
   }, [columnDates, todayColIndex])
 
   return (
+    <>
     <div ref={scrollRef} className="w-full overflow-x-auto rounded-lg border border-zinc-200 shadow-sm">
       <div className="w-full min-w-fit">
         <table
@@ -205,11 +239,24 @@ export function ScheduleGrid({
                     : dow === 0 || hol
                       ? 'bg-rose-50 text-rose-600'
                       : 'bg-zinc-50 text-zinc-600'
+                const headerClickable =
+                  role === 'leader' && mode === 'shift'
+                    ? `cursor-pointer transition-colors ${
+                        isToday
+                          ? 'hover:bg-slate-600'
+                          : 'hover:bg-slate-100'
+                      }`
+                    : ''
                 return (
                   <th
                     key={d}
-                    className={`sticky top-0 z-20 border-b border-r border-zinc-100 px-1 py-1.5 text-center text-xs font-medium whitespace-pre-line ${tone}`}
+                    className={`sticky top-0 z-20 border-b border-r border-zinc-100 px-1 py-1.5 text-center text-xs font-medium whitespace-pre-line ${tone} ${headerClickable}`}
                     style={{ willChange: 'transform' }}
+                    onClick={
+                      role === 'leader' && mode === 'shift'
+                        ? () => handleDateHeaderClick(d)
+                        : undefined
+                    }
                   >
                     {labelDate(d)}
                   </th>
@@ -254,7 +301,10 @@ export function ScheduleGrid({
                           : 'cursor-default'
                       }`}
                       onClick={
-                        cellInteractive ? () => onPickCell(d) : undefined
+                        cellInteractive
+                          ? () =>
+                              handleShiftCellClick(s.staff_id, s.staff_name, d)
+                          : undefined
                       }
                       title={
                         showReq && req
@@ -336,5 +386,47 @@ export function ScheduleGrid({
         </table>
       </div>
     </div>
+
+    {requestConfirm ? (
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30"
+        onClick={() => setRequestConfirm(null)}
+      >
+        <div
+          className="mx-4 w-full max-w-xs rounded-lg border border-zinc-200 bg-white p-4 shadow-lg"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mb-1 text-sm font-medium text-zinc-700">
+            {requestConfirm.staffName}
+          </div>
+          <div className="mb-3 text-xs text-zinc-400">
+            {requestConfirm.date} の希望シフト
+          </div>
+          <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            {requestConfirm.label}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="flex-1 rounded-md border border-zinc-200 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-50"
+              onClick={() => setRequestConfirm(null)}
+            >
+              閉じる
+            </button>
+            <button
+              type="button"
+              className="flex-1 rounded-md bg-slate-700 py-2 text-sm text-white transition-colors hover:bg-slate-800"
+              onClick={() => {
+                onPickCell(requestConfirm.date)
+                setRequestConfirm(null)
+              }}
+            >
+              シフトを編集
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   )
 }
