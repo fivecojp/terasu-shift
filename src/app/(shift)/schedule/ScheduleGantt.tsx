@@ -11,7 +11,7 @@ import {
   isoToMinutesFromWorkDateMidnight,
   snapMinutes,
 } from '@/lib/jst-shift-time'
-import { minutesToDisplay } from '@/lib/time'
+import { minutesToDisplay, minutesToPosition } from '@/lib/time'
 
 export type StaffLine = {
   staff_id: string
@@ -30,6 +30,24 @@ type Props = {
     startMin: number,
     endMin: number
   ) => Promise<void>
+}
+
+function shiftEndMissing(sh: Shift): boolean {
+  const end = sh.scheduled_end_at as string | null | undefined
+  return end == null || String(end).trim() === ''
+}
+
+function barLabelText(
+  sh: Shift | undefined,
+  lo: number,
+  hi: number | null
+): string {
+  const name = sh?.shift_pattern_name?.trim()
+  if (name) return name
+  if (hi !== null && hi > lo) {
+    return `${minutesToDisplay(lo)}–${minutesToDisplay(hi)}`
+  }
+  return minutesToDisplay(lo)
 }
 
 const MIN_DURATION_MIN = 30
@@ -122,14 +140,27 @@ export function ScheduleGantt({
   const rangeFor = useCallback(
     (sid: string, sh: Shift | undefined) => {
       const l = live.get(sid)
-      if (l) return { lo: l.s, hi: l.e }
+      if (l) return { lo: l.s, hi: l.e, endMissing: false }
       const c = committed.get(sid)
-      if (c) return { lo: c.s, hi: c.e }
-      if (!sh) return { lo: null as number | null, hi: null as number | null }
-      return {
-        lo: isoToMinutesFromWorkDateMidnight(sh.scheduled_start_at, workDate),
-        hi: isoToMinutesFromWorkDateMidnight(sh.scheduled_end_at, workDate),
+      if (c) return { lo: c.s, hi: c.e, endMissing: false }
+      if (!sh)
+        return {
+          lo: null as number | null,
+          hi: null as number | null,
+          endMissing: false,
+        }
+      const lo = isoToMinutesFromWorkDateMidnight(
+        sh.scheduled_start_at,
+        workDate
+      )
+      if (shiftEndMissing(sh)) {
+        return { lo, hi: null as number | null, endMissing: true }
       }
+      const hi = isoToMinutesFromWorkDateMidnight(
+        sh.scheduled_end_at,
+        workDate
+      )
+      return { lo, hi, endMissing: false }
     },
     [live, committed, workDate]
   )
@@ -340,7 +371,40 @@ export function ScheduleGantt({
         </div>
         {staffLines.map((s) => {
           const sh = shiftByStaff.get(s.staff_id)
-          const { lo, hi } = rangeFor(s.staff_id, sh)
+          const { lo, hi, endMissing } = rangeFor(s.staff_id, sh)
+          const hiForDrag =
+            lo !== null ? (hi ?? lo + MIN_DURATION_MIN) : null
+
+          let leftPct = 0
+          let widthPct = 0
+          let showShiftBar = false
+          if (
+            lo !== null &&
+            hiForDrag !== null &&
+            hiForDrag > lo &&
+            span > 0
+          ) {
+            if (endMissing) {
+              leftPct = minutesToPosition(lo, gs, ge)
+              widthPct = 2
+              showShiftBar = true
+            } else if (hi !== null && hi > lo) {
+              leftPct = minutesToPosition(lo, gs, ge)
+              widthPct = minutesToPosition(hi, gs, ge) - leftPct
+              showShiftBar = widthPct > 0
+            }
+          }
+
+          const barBg = endMissing ? 'bg-zinc-400' : 'bg-slate-600'
+          const barText = endMissing ? 'text-zinc-900' : 'text-white'
+          const labelText =
+            lo !== null ? barLabelText(sh, lo, hi) : ''
+          const titleFull =
+            lo !== null && hi !== null && hi > lo
+              ? `${minutesToDisplay(lo)}〜${minutesToDisplay(hi)}`
+              : lo !== null
+                ? `${minutesToDisplay(lo)}〜`
+                : ''
 
           const req = requestByStaff.get(s.staff_id)
           let rqLo: number | null = null
@@ -401,12 +465,12 @@ export function ScheduleGantt({
                   />
                 ) : null}
 
-                {lo !== null && hi !== null && hi > lo ? (
+                {showShiftBar ? (
                   <div
-                    className="absolute top-1 bottom-1 flex overflow-hidden rounded bg-slate-600"
+                    className={`absolute top-1 bottom-1 flex overflow-hidden rounded ${barBg}`}
                     style={{
-                      left: `${pctLeft(lo, gs, ge)}%`,
-                      width: `${pctWidth(lo, hi, gs, ge)}%`,
+                      left: `${leftPct}%`,
+                      width: `${Math.max(widthPct, 0)}%`,
                     }}
                     onClick={(ev) => ev.stopPropagation()}
                     role="presentation"
@@ -414,23 +478,44 @@ export function ScheduleGantt({
                     <div
                       className={HANDLE_CLASS}
                       onMouseDown={(ev) =>
-                        startResizeLeft(s.staff_id, lo as number, hi as number, ev)
+                        startResizeLeft(
+                          s.staff_id,
+                          lo as number,
+                          hiForDrag as number,
+                          ev
+                        )
                       }
                       title="開始を変更"
                     />
                     <div
-                      className="flex min-w-[20px] flex-1 cursor-grab items-center justify-center overflow-hidden truncate bg-slate-600 px-0.5 text-center text-xs font-medium text-white active:cursor-grabbing"
-                      title={`${minutesToDisplay(lo)}〜${minutesToDisplay(hi)}`}
+                      className={`flex min-w-[20px] flex-1 cursor-grab items-center justify-center overflow-hidden px-0.5 text-center text-[10px] font-medium leading-tight whitespace-nowrap active:cursor-grabbing ${barBg} ${barText}`}
+                      title={titleFull}
                       onMouseDown={(ev) =>
-                        startMoveDrag(s.staff_id, lo as number, hi as number, ev)
+                        startMoveDrag(
+                          s.staff_id,
+                          lo as number,
+                          hiForDrag as number,
+                          ev
+                        )
                       }
                     >
-                      {minutesToDisplay(lo as number)}
+                      <span
+                        className={`truncate ${
+                          widthPct < 5 ? 'invisible' : ''
+                        }`}
+                      >
+                        {labelText}
+                      </span>
                     </div>
                     <div
                       className={HANDLE_CLASS}
                       onMouseDown={(ev) =>
-                        startResizeRight(s.staff_id, lo as number, hi as number, ev)
+                        startResizeRight(
+                          s.staff_id,
+                          lo as number,
+                          hiForDrag as number,
+                          ev
+                        )
                       }
                       title="終了を変更"
                     />
