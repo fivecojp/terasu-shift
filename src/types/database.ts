@@ -42,6 +42,7 @@ export type ShiftSetting = {
   deadline_type: 'days_before' | 'weeks_before' | 'months_before'
   deadline_value: number
   csv_format_type: string | null
+  show_requests_to_general: boolean
   updated_at: string
 }
 

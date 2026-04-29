@@ -49,6 +49,7 @@ export default async function SettingsPage({
     <SettingsPageClient
       session={session}
       settings={settings}
+      showRequestsToGeneral={settings.show_requests_to_general}
       patterns={(patterns ?? []) as ShiftPattern[]}
       scheduleLinkYm={ymForLink}
     />

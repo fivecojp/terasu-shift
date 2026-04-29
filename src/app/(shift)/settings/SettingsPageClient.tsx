@@ -8,6 +8,7 @@ import {
   createShiftPatternAction,
   deactivateShiftPatternAction,
   updateShiftPatternAction,
+  updateShowRequestsToGeneralAction,
   upsertShiftSettingsAction,
 } from '@/app/(shift)/settings/actions'
 import { MinuteSelect } from '@/app/(shift)/settings/MinuteSelect'
@@ -40,6 +41,7 @@ function fromPatterns(patterns: ShiftPattern[]): PatternEdit[] {
 type Props = {
   session: SessionUser
   settings: ShiftSetting
+  showRequestsToGeneral: boolean
   patterns: ShiftPattern[]
   scheduleLinkYm: string
 }
@@ -47,6 +49,7 @@ type Props = {
 export function SettingsPageClient({
   session,
   settings: initialSettings,
+  showRequestsToGeneral: showRequestsToGeneralProp,
   patterns,
   scheduleLinkYm,
 }: Props) {
@@ -65,6 +68,15 @@ export function SettingsPageClient({
   const [patternEdits, setPatternEdits] = useState<PatternEdit[]>(() =>
     fromPatterns(patterns)
   )
+
+  const [showRequestsToGeneral, setShowRequestsToGeneral] = useState(
+    showRequestsToGeneralProp
+  )
+  const [showRequestsPending, setShowRequestsPending] = useState(false)
+
+  useEffect(() => {
+    setShowRequestsToGeneral(showRequestsToGeneralProp)
+  }, [showRequestsToGeneralProp])
 
   useEffect(() => {
     setPatternEdits(fromPatterns(patterns))
@@ -88,6 +100,7 @@ export function SettingsPageClient({
       deadline_type: sett.deadline_type,
       deadline_value: Math.max(1, Math.floor(Number(sett.deadline_value)) || 1),
       csv_format_type: initialSettings.csv_format_type,
+      show_requests_to_general: showRequestsToGeneral,
     })
     if (!res.ok) {
       alert(res.error)
@@ -158,6 +171,22 @@ export function SettingsPageClient({
       }
       notify('パターンを保存しました')
     }
+    router.refresh()
+  }
+
+  async function onShowRequestsToGeneralChange(next: boolean) {
+    setShowRequestsPending(true)
+    const res = await updateShowRequestsToGeneralAction(
+      session.store_id,
+      next
+    )
+    setShowRequestsPending(false)
+    if (res.error) {
+      alert(res.error)
+      return
+    }
+    setShowRequestsToGeneral(next)
+    notify('希望シフトの表示設定を更新しました')
     router.refresh()
   }
 
@@ -480,6 +509,43 @@ export function SettingsPageClient({
             </button>
           </div>
         </form>
+
+        <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+            一般スタッフへの希望シフト表示
+          </h2>
+          <p className="mb-4 text-sm text-zinc-500">
+            オフにすると、一般権限のスタッフはシフト画面で他のスタッフの希望シフトを確認できなくなります。
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="inline-flex cursor-pointer items-center gap-3">
+              <span className="relative inline-flex h-7 w-12 shrink-0 items-center">
+                <input
+                  type="checkbox"
+                  role="switch"
+                  aria-checked={showRequestsToGeneral}
+                  className="peer sr-only"
+                  checked={showRequestsToGeneral}
+                  disabled={showRequestsPending}
+                  onChange={(e) =>
+                    void onShowRequestsToGeneralChange(e.target.checked)
+                  }
+                />
+                <span
+                  className="pointer-events-none absolute inset-0 rounded-full bg-zinc-300 transition peer-checked:bg-emerald-600 peer-focus-visible:ring-2 peer-focus-visible:ring-slate-400 peer-disabled:opacity-50"
+                  aria-hidden
+                />
+                <span
+                  className="pointer-events-none absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"
+                  aria-hidden
+                />
+              </span>
+              <span className="text-sm font-medium text-zinc-800">
+                {showRequestsToGeneral ? '表示する' : '表示しない'}
+              </span>
+            </label>
+          </div>
+        </section>
       </div>
     </div>
   )

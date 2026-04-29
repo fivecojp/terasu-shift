@@ -13,6 +13,7 @@ export const SHIFT_SETTINGS_DEFAULTS: Omit<
   deadline_type: 'days_before',
   deadline_value: 7,
   csv_format_type: null,
+  show_requests_to_general: true,
 }
 
 /**

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/service'
+import { SHIFT_SETTINGS_DEFAULTS } from '@/lib/shift-settings-ensure'
 import type { ShiftPattern, ShiftSetting } from '@/types/database'
 
 async function requireLeaderStore() {
@@ -46,6 +47,49 @@ export async function upsertShiftSettingsAction(
   revalidatePath('/schedule')
   revalidatePath('/request')
   return { ok: true }
+}
+
+export async function updateShowRequestsToGeneralAction(
+  storeId: string,
+  value: boolean
+): Promise<{ error: string | null }> {
+  const session = await requireLeaderStore()
+  if (!session) return { error: '権限がありません' }
+  if (storeId !== session.store_id) {
+    return { error: '店舗が一致しません' }
+  }
+
+  const supabase = createServiceClient()
+  const { data: existing, error: fetchErr } = await supabase
+    .from('shift_settings')
+    .select('*')
+    .eq('store_id', storeId)
+    .maybeSingle()
+
+  if (fetchErr) return { error: fetchErr.message }
+
+  const updated_at = new Date().toISOString()
+  const row: ShiftSetting =
+    existing != null
+      ? {
+          ...(existing as ShiftSetting),
+          show_requests_to_general: value,
+          updated_at,
+        }
+      : {
+          store_id: storeId,
+          ...SHIFT_SETTINGS_DEFAULTS,
+          show_requests_to_general: value,
+          updated_at,
+        }
+
+  const { error } = await supabase.from('shift_settings').upsert(row, {
+    onConflict: 'store_id',
+  })
+  if (error) return { error: error.message }
+  revalidatePath('/settings')
+  revalidatePath('/schedule')
+  return { error: null }
 }
 
 export async function createShiftPatternAction(input: {

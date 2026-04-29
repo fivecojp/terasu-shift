@@ -66,6 +66,7 @@ type Props = SchedulePageData & {
   viewStartYmd: string
   scheduleViewKind: ScheduleViewKind
   allRequests: RequestSummary[]
+  showRequestsToGeneral: boolean
 }
 
 export function ScheduleClient(init: Props) {
@@ -84,6 +85,7 @@ export function ScheduleClient(init: Props) {
     shifts,
     requests,
     allRequests,
+    showRequestsToGeneral: _showRequestsToGeneral,
     publishRows,
     holidays,
     ymQuery,

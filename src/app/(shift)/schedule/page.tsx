@@ -194,6 +194,10 @@ export default async function SchedulePage({
 
   const allRequests = (allRequestsRes.data ?? []) as RequestSummary[]
 
+  const showRequestsToGeneral = shiftSettings.show_requests_to_general
+  const allRequestsForClient =
+    session.role === 'general' && !showRequestsToGeneral ? [] : allRequests
+
   return (
     <ScheduleClient
       session={session}
@@ -205,7 +209,8 @@ export default async function SchedulePage({
       patterns={(patternsRes.data ?? []) as ShiftPattern[]}
       shifts={(shiftsRes.data ?? []) as ShiftRow[]}
       requests={(requestsRes.data ?? []) as ShiftRequest[]}
-      allRequests={allRequests}
+      allRequests={allRequestsForClient}
+      showRequestsToGeneral={showRequestsToGeneral}
       publishRows={(publishRes.data ?? []) as ShiftPublishStatus[]}
       holidays={holidaysRes.data ?? []}
       targetMonthFirst={targetMonthFirst}
