@@ -392,12 +392,21 @@ export function ScheduleGantt({
     null
   )
 
+  /** PC: バー上 mousedown 後に mousemove が一度でもあると true（クリックとドラッグの区別） */
+  const pcBarPointerMovedRef = useRef(false)
+
   const [isTouchDevice, setIsTouchDevice] = useState(false)
   useEffect(() => {
     setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0)
   }, [])
 
   const [tapModal, setTapModal] = useState<TapEditModal | null>(null)
+
+  const [pcDeleteTarget, setPcDeleteTarget] = useState<{
+    shiftId: string
+    staffName: string
+  } | null>(null)
+  const [isPcDeleting, setIsPcDeleting] = useState(false)
 
   const minuteFromClientX = useCallback(
     (staffId: string, clientX: number) => {
@@ -451,10 +460,12 @@ export function ScheduleGantt({
     e.preventDefault()
     e.stopPropagation()
     if (!tracks.current.get(staffId) || span <= 0) return
+    pcBarPointerMovedRef.current = false
     const dur = Math.max(endMin - startMin, MIN_DURATION_MIN)
     const startMid = (startMin + endMin) / 2
 
     function onMove(me: MouseEvent) {
+      pcBarPointerMovedRef.current = true
       const tel = tracks.current.get(staffId)
       if (!tel) return
       const r = tel.getBoundingClientRect()
@@ -485,6 +496,18 @@ export function ScheduleGantt({
         return n
       })
       if (fin && fin.e - fin.s >= MIN_DURATION_MIN) {
+        if (!isTouchDevice && !pcBarPointerMovedRef.current) {
+          const shRow = shiftByStaff.get(fin.staffId)
+          const delId = shRow?.shift_id
+          if (delId) {
+            const line = staffLines.find((u) => u.staff_id === fin.staffId)
+            setPcDeleteTarget({
+              shiftId: delId,
+              staffName: line?.staff_name ?? '',
+            })
+            return
+          }
+        }
         setCommitted((m) => new Map(m).set(fin.staffId, { s: fin.s, e: fin.e }))
         void onSave(fin.staffId, fin.s, fin.e).finally(() => {
           setCommitted((m) => {
@@ -512,8 +535,10 @@ export function ScheduleGantt({
     e.preventDefault()
     e.stopPropagation()
     if (!tracks.current.get(staffId)) return
+    pcBarPointerMovedRef.current = false
 
     function onMove(me: MouseEvent) {
+      pcBarPointerMovedRef.current = true
       let ns = minuteFromClientX(staffId, me.clientX)
       const maxStart = endMin - MIN_DURATION_MIN
       ns = Math.min(ns, maxStart)
@@ -534,6 +559,18 @@ export function ScheduleGantt({
         return n
       })
       if (fin && fin.e - fin.s >= MIN_DURATION_MIN) {
+        if (!isTouchDevice && !pcBarPointerMovedRef.current) {
+          const shRow = shiftByStaff.get(fin.staffId)
+          const delId = shRow?.shift_id
+          if (delId) {
+            const line = staffLines.find((u) => u.staff_id === fin.staffId)
+            setPcDeleteTarget({
+              shiftId: delId,
+              staffName: line?.staff_name ?? '',
+            })
+            return
+          }
+        }
         setCommitted((m) => new Map(m).set(fin.staffId, { s: fin.s, e: fin.e }))
         void onSave(fin.staffId, fin.s, fin.e).finally(() => {
           setCommitted((m) => {
@@ -561,8 +598,10 @@ export function ScheduleGantt({
     e.preventDefault()
     e.stopPropagation()
     if (!tracks.current.get(staffId)) return
+    pcBarPointerMovedRef.current = false
 
     function onMove(me: MouseEvent) {
+      pcBarPointerMovedRef.current = true
       let ne = minuteFromClientX(staffId, me.clientX)
       const minEnd = startMin + MIN_DURATION_MIN
       ne = Math.max(ne, minEnd)
@@ -583,6 +622,18 @@ export function ScheduleGantt({
         return n
       })
       if (fin && fin.e - fin.s >= MIN_DURATION_MIN) {
+        if (!isTouchDevice && !pcBarPointerMovedRef.current) {
+          const shRow = shiftByStaff.get(fin.staffId)
+          const delId = shRow?.shift_id
+          if (delId) {
+            const line = staffLines.find((u) => u.staff_id === fin.staffId)
+            setPcDeleteTarget({
+              shiftId: delId,
+              staffName: line?.staff_name ?? '',
+            })
+            return
+          }
+        }
         setCommitted((m) => new Map(m).set(fin.staffId, { s: fin.s, e: fin.e }))
         void onSave(fin.staffId, fin.s, fin.e).finally(() => {
           setCommitted((m) => {
@@ -618,6 +669,20 @@ export function ScheduleGantt({
           return n
         })
       })
+    }
+  }
+
+  async function handlePcDeleteConfirm() {
+    const t = pcDeleteTarget
+    if (!t) return
+    setIsPcDeleting(true)
+    try {
+      await onDelete(t.shiftId)
+      setPcDeleteTarget(null)
+    } catch {
+      /* 親が alert 済み */
+    } finally {
+      setIsPcDeleting(false)
     }
   }
 
@@ -872,6 +937,51 @@ export function ScheduleGantt({
         </div>
       </div>
     )}
+
+    {pcDeleteTarget ? (
+      <div
+        className="fixed inset-0 z-[210] flex items-start justify-center bg-black/40 pt-40"
+        role="dialog"
+        aria-modal
+        aria-labelledby="pc-delete-confirm-title"
+        onClick={() => {
+          if (!isPcDeleting) setPcDeleteTarget(null)
+        }}
+      >
+        <div
+          className="mx-auto mt-0 w-80 rounded-xl bg-white p-6 shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3
+            id="pc-delete-confirm-title"
+            className="font-medium text-zinc-900"
+          >
+            シフトを削除しますか？
+          </h3>
+          <p className="mt-1 text-sm text-zinc-500">
+            この操作は取り消せません。
+          </p>
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              className="rounded-md border border-zinc-200 px-4 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-50"
+              disabled={isPcDeleting}
+              onClick={() => setPcDeleteTarget(null)}
+            >
+              キャンセル
+            </button>
+            <button
+              type="button"
+              className="rounded-md bg-rose-600 px-4 py-2 text-sm text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isPcDeleting}
+              onClick={() => void handlePcDeleteConfirm()}
+            >
+              {isPcDeleting ? '削除中...' : '削除する'}
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
     </>
   )
 }
