@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import type { Shift, ShiftPattern, ShiftRequest } from '@/types/database'
 import { formatShiftTimeRangeCompact } from '@/lib/jst-shift-time'
-import { minutesToDisplay } from '@/lib/time'
+import { minutesToShort } from '@/lib/time'
 import type { StaffRow } from '@/app/(shift)/schedule/types'
 
 type Props = {
@@ -43,9 +43,12 @@ function requestLabel(
     case 'off':
       return '×'
     case 'custom': {
-      const a = r.custom_start_minutes ?? 0
-      const b = r.custom_end_minutes ?? 0
-      return `${minutesToDisplay(a)}-${minutesToDisplay(b)}`
+      const cs = r.custom_start_minutes
+      const ce = r.custom_end_minutes
+      if (cs !== null && ce !== null) {
+        return `${minutesToShort(cs)}-${minutesToShort(ce)}`
+      }
+      return '他'
     }
     default:
       return ''
@@ -60,6 +63,14 @@ function requestShort(
   if (r.request_type === 'off') return '×'
   if (r.request_type === 'pattern') {
     return patterns.get(r.shift_pattern_id ?? '')?.pattern_name ?? '?'
+  }
+  if (r.request_type === 'custom') {
+    const cs = r.custom_start_minutes
+    const ce = r.custom_end_minutes
+    if (cs !== null && ce !== null) {
+      return `${minutesToShort(cs)}-${minutesToShort(ce)}`
+    }
+    return '他'
   }
   return '他'
 }

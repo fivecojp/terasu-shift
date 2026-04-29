@@ -2,7 +2,7 @@
 
 import type { ShiftPattern } from '@/types/database'
 import { parseYmd } from '@/lib/shift-request-periods'
-import { minutesToDisplay } from '@/lib/time'
+import { minutesToDisplay, minutesToShort } from '@/lib/time'
 
 export type Tone = 'sat' | 'sunh' | 'plain'
 
@@ -152,7 +152,15 @@ export function RequestDateRow({
             className={sel === 'custom' ? BTN_ON : BTN_OFF}
             onClick={() => onSelectChange('custom')}
           >
-            その他（時間入力）
+            {row.mode === 'custom' ? (
+              row.customStart !== null && row.customEnd !== null ? (
+                `${minutesToShort(row.customStart)}-${minutesToShort(row.customEnd)}`
+              ) : (
+                '他'
+              )
+            ) : (
+              'その他（時間入力）'
+            )}
           </button>
         </div>
 
