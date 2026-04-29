@@ -1,6 +1,7 @@
 {
   "name": "TERASU-Shift",
   "short_name": "TERASU",
+  "description": "バー・ナイトクラブのシフト管理アプリ",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -9,12 +10,14 @@
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
