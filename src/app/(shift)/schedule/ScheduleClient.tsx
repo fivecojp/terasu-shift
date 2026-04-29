@@ -26,7 +26,10 @@ import {
   publishSchedulePeriod,
   saveShiftFromMinutes,
 } from '@/app/(shift)/schedule/actions'
-import { ScheduleGrid } from '@/app/(shift)/schedule/ScheduleGrid'
+import {
+  ScheduleGrid,
+  type RequestSummary,
+} from '@/app/(shift)/schedule/ScheduleGrid'
 import { ScheduleGantt } from '@/app/(shift)/schedule/ScheduleGantt'
 import { logoutAndRedirectToLogin } from '@/lib/logout-client'
 export type { StaffRow }
@@ -62,6 +65,7 @@ type Props = SchedulePageData & {
   storeCount: number
   viewStartYmd: string
   scheduleViewKind: ScheduleViewKind
+  allRequests: RequestSummary[]
 }
 
 export function ScheduleClient(init: Props) {
@@ -76,6 +80,7 @@ export function ScheduleClient(init: Props) {
     patterns,
     shifts,
     requests,
+    allRequests,
     publishRows,
     holidays,
     ymQuery,
@@ -604,6 +609,7 @@ export function ScheduleClient(init: Props) {
           patternsById={patternsById}
           shiftsKey={shiftsKey}
           requestsKey={requestsKey}
+          allRequests={allRequests}
           unsubmittedStaffIds={unsubmittedStaffIds}
           onPickCell={(wd) => {
             if (effectiveViewMode === 'shift') onPickCell(wd)

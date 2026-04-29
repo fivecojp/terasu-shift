@@ -1,10 +1,19 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Shift, ShiftPattern, ShiftRequest } from '@/types/database'
 import { formatShiftTimeRangeCompact } from '@/lib/jst-shift-time'
 import { minutesToShort } from '@/lib/time'
 import type { StaffRow } from '@/app/(shift)/schedule/types'
+
+export type RequestSummary = {
+  staff_id: string
+  work_date: string
+  request_type: 'pattern' | 'free' | 'off' | 'custom'
+  shift_pattern_id: string | null
+  custom_start_minutes: number | null
+  custom_end_minutes: number | null
+}
 
 type Props = {
   staff: StaffRow[]
@@ -15,6 +24,7 @@ type Props = {
   patternsById: Map<string, ShiftPattern>
   shiftsKey: Map<string, Shift>
   requestsKey: Map<string, ShiftRequest>
+  allRequests: RequestSummary[]
   unsubmittedStaffIds: Set<string>
   onPickCell: (workDate: string) => void
 }
@@ -75,6 +85,29 @@ function requestShort(
   return '他'
 }
 
+function formatRequestLabel(
+  req: RequestSummary,
+  patterns: ShiftPattern[]
+): string {
+  if (req.request_type === 'off') return '休み'
+  if (req.request_type === 'free') return '出勤可'
+  if (req.request_type === 'pattern') {
+    const p = patterns.find(
+      (x) => x.shift_pattern_id === req.shift_pattern_id
+    )
+    return p ? p.pattern_name : 'パターン'
+  }
+  if (req.request_type === 'custom') {
+    const s = req.custom_start_minutes
+    const e = req.custom_end_minutes
+    if (s !== null && e !== null) {
+      return `${minutesToShort(s)}〜${minutesToShort(e)}`
+    }
+    return 'その他'
+  }
+  return '希望あり'
+}
+
 export function ScheduleGrid({
   staff,
   columnDates,
@@ -84,12 +117,45 @@ export function ScheduleGrid({
   patternsById,
   shiftsKey,
   requestsKey,
+  allRequests,
   unsubmittedStaffIds,
   onPickCell,
 }: Props) {
   const todayStr = new Date().toLocaleDateString('sv-SE')
   const scrollRef = useRef<HTMLDivElement>(null)
   const todayColIndex = columnDates.indexOf(todayStr)
+  const [openRibbonKey, setOpenRibbonKey] = useState<string | null>(null)
+
+  const requestMap = useMemo(() => {
+    const m = new Map<string, RequestSummary>()
+    for (const r of allRequests) {
+      m.set(`${r.staff_id}_${r.work_date}`, r)
+    }
+    return m
+  }, [allRequests])
+
+  const patternsList = useMemo(
+    () => [...patternsById.values()],
+    [patternsById]
+  )
+
+  const toggleRibbon = useCallback((key: string) => {
+    setOpenRibbonKey((prev) => (prev === key ? null : key))
+  }, [])
+
+  useEffect(() => {
+    if (openRibbonKey === null) return
+    function handleDocPointerDown(ev: PointerEvent | MouseEvent) {
+      const t = ev.target
+      if (!(t instanceof Element)) return
+      const hit = t.closest('[data-request-ribbon]')
+      if (hit?.getAttribute('data-request-ribbon') === openRibbonKey) return
+      setOpenRibbonKey(null)
+    }
+    document.addEventListener('pointerdown', handleDocPointerDown, true)
+    return () =>
+      document.removeEventListener('pointerdown', handleDocPointerDown, true)
+  }, [openRibbonKey])
 
   useEffect(() => {
     if (scrollRef.current === null || todayColIndex < 0) return
@@ -173,6 +239,8 @@ export function ScheduleGrid({
                   const k = `${s.staff_id}|${d}`
                   const req = requestsKey.get(k)
                   const sh = shiftsKey.get(k)
+                  const ribbonKey = `${s.staff_id}_${d}`
+                  const summaryReq = requestMap.get(ribbonKey)
                   const showReq = mode === 'request'
                   const cellInteractive =
                     role === 'leader' && mode === 'shift'
@@ -194,6 +262,40 @@ export function ScheduleGrid({
                           : undefined
                       }
                     >
+                      {summaryReq ? (
+                        <div
+                          className="group absolute right-0 top-0 z-10"
+                          data-request-ribbon={ribbonKey}
+                        >
+                          <button
+                            type="button"
+                            aria-expanded={openRibbonKey === ribbonKey}
+                            aria-label="希望の内容を表示"
+                            className="block border-0 bg-transparent p-0 leading-none"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleRibbon(ribbonKey)
+                            }}
+                          >
+                            <span
+                              className="block h-0 w-0 border-l-[10px] border-t-[10px] border-l-transparent border-t-emerald-400 cursor-pointer"
+                              aria-hidden
+                            />
+                          </button>
+                          <div
+                            className={`pointer-events-none absolute right-0 top-3 z-50 rounded border border-zinc-200 bg-white px-2 py-1 text-xs whitespace-nowrap text-zinc-700 shadow-md ${
+                              openRibbonKey === ribbonKey
+                                ? 'block'
+                                : 'hidden group-focus-within:block group-hover:block'
+                            }`}
+                          >
+                            <span className="mr-1 text-[10px] text-zinc-400">
+                              希望:
+                            </span>
+                            {formatRequestLabel(summaryReq, patternsList)}
+                          </div>
+                        </div>
+                      ) : null}
                       {showReq ? (
                         req ? (
                           req.request_type === 'free' ? (

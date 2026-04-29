@@ -21,6 +21,7 @@ import type {
   Staff,
 } from '@/types/database'
 import { ScheduleClient } from '@/app/(shift)/schedule/ScheduleClient'
+import type { RequestSummary } from '@/app/(shift)/schedule/ScheduleGrid'
 import type { StaffRow } from '@/app/(shift)/schedule/types'
 
 export default async function SchedulePage({
@@ -131,34 +132,50 @@ export default async function SchedulePage({
         ? shiftRequestsBase.in('target_month', requestMonths)
         : shiftRequestsBase.eq('target_month', targetMonthFirst)
 
-  const [patternsRes, holidaysRes, shiftsRes, requestsRes, publishRes] =
+  const columnDates = viewRange.dates
+
+  const allRequestsQuery =
+    columnDates.length === 0
+      ? Promise.resolve({ data: [] as RequestSummary[] })
+      : supabase
+          .from('shift_requests')
+          .select(
+            'staff_id, work_date, request_type, shift_pattern_id, custom_start_minutes, custom_end_minutes'
+          )
+          .eq('store_id', session.store_id)
+          .in('work_date', columnDates)
+
+  const [patternsRes, holidaysRes, shiftsRes, requestsRes, publishRes, allRequestsRes] =
     await Promise.all([
-    supabase
-      .from('shift_patterns')
-      .select('*')
-      .eq('store_id', session.store_id)
-      .eq('is_active', true)
-      .order('display_order', { ascending: true }),
-    supabase
-      .from('holidays')
-      .select('holiday_date')
-      .eq('store_id', session.store_id)
-      .gte('holiday_date', fetchStart)
-      .lte('holiday_date', fetchEnd),
-    supabase
-      .from('shifts')
-      .select('*')
-      .eq('store_id', session.store_id)
-      .gte('work_date', fetchStart)
-      .lte('work_date', fetchEnd),
-    shiftRequestsQuery,
-    supabase
-      .from('shift_publish_statuses')
-      .select('*')
-      .eq('store_id', session.store_id)
-      .lte('period_start', fetchEnd)
-      .gte('period_end', fetchStart),
+      supabase
+        .from('shift_patterns')
+        .select('*')
+        .eq('store_id', session.store_id)
+        .eq('is_active', true)
+        .order('display_order', { ascending: true }),
+      supabase
+        .from('holidays')
+        .select('holiday_date')
+        .eq('store_id', session.store_id)
+        .gte('holiday_date', fetchStart)
+        .lte('holiday_date', fetchEnd),
+      supabase
+        .from('shifts')
+        .select('*')
+        .eq('store_id', session.store_id)
+        .gte('work_date', fetchStart)
+        .lte('work_date', fetchEnd),
+      shiftRequestsQuery,
+      supabase
+        .from('shift_publish_statuses')
+        .select('*')
+        .eq('store_id', session.store_id)
+        .lte('period_start', fetchEnd)
+        .gte('period_end', fetchStart),
+      allRequestsQuery,
     ])
+
+  const allRequests = (allRequestsRes.data ?? []) as RequestSummary[]
 
   return (
     <ScheduleClient
@@ -171,6 +188,7 @@ export default async function SchedulePage({
       patterns={(patternsRes.data ?? []) as ShiftPattern[]}
       shifts={(shiftsRes.data ?? []) as ShiftRow[]}
       requests={(requestsRes.data ?? []) as ShiftRequest[]}
+      allRequests={allRequests}
       publishRows={(publishRes.data ?? []) as ShiftPublishStatus[]}
       holidays={holidaysRes.data ?? []}
       targetMonthFirst={targetMonthFirst}
