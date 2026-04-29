@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   Shift,
   ShiftPattern,
@@ -11,7 +11,11 @@ import {
   isoToMinutesFromWorkDateMidnight,
   snapMinutes,
 } from '@/lib/jst-shift-time'
-import { minutesToDisplay, minutesToPosition } from '@/lib/time'
+import {
+  displayToMinutes,
+  minutesToDisplay,
+  minutesToPosition,
+} from '@/lib/time'
 
 export type StaffLine = {
   staff_id: string
@@ -64,6 +68,175 @@ function pctWidth(lo: number, hi: number, gs: number, ge: number) {
   const sp = ge - gs
   if (sp <= 0) return 0
   return Math.max(((hi - lo) / sp) * 100, 0.4)
+}
+
+type TapEditModal = {
+  staffId: string
+  staffName: string
+  initStartMin: number | null
+  initEndMin: number | null
+}
+
+type TapEditFormProps = {
+  modal: TapEditModal
+  patternsById: Map<string, ShiftPattern>
+  ganttStart: number
+  ganttEnd: number
+  onSave: (staffId: string, startMin: number, endMin: number) => Promise<void>
+  onClose: () => void
+}
+
+function TapEditForm({
+  modal,
+  patternsById,
+  ganttStart,
+  ganttEnd,
+  onSave,
+  onClose,
+}: TapEditFormProps) {
+  const patterns = useMemo(
+    () => Array.from(patternsById.values()).filter((p) => p.is_active),
+    [patternsById]
+  )
+
+  const [mode, setMode] = useState<'pattern' | 'time'>(
+    patterns.length > 0 ? 'pattern' : 'time'
+  )
+  const [startInput, setStartInput] = useState(
+    modal.initStartMin !== null ? minutesToDisplay(modal.initStartMin) : ''
+  )
+  const [endInput, setEndInput] = useState(
+    modal.initEndMin !== null ? minutesToDisplay(modal.initEndMin) : ''
+  )
+  const [saving, setSaving] = useState(false)
+
+  const timeOptions = useMemo(() => {
+    const opts: string[] = []
+    for (let m = ganttStart; m <= ganttEnd; m += 30) {
+      opts.push(minutesToDisplay(m))
+    }
+    return opts
+  }, [ganttStart, ganttEnd])
+
+  const handlePatternSave = async (p: ShiftPattern) => {
+    setSaving(true)
+    await onSave(modal.staffId, p.start_minutes, p.end_minutes)
+    setSaving(false)
+    onClose()
+  }
+
+  const handleTimeSave = async () => {
+    const s = displayToMinutes(startInput)
+    const e = displayToMinutes(endInput)
+    if (Number.isNaN(s) || Number.isNaN(e) || e <= s) return
+    setSaving(true)
+    await onSave(modal.staffId, s, e)
+    setSaving(false)
+    onClose()
+  }
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="text-sm font-medium text-zinc-800">{modal.staffName}</div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-xl leading-none text-zinc-400 hover:text-zinc-600"
+        >
+          ×
+        </button>
+      </div>
+
+      {patterns.length > 0 && (
+        <div className="mb-4 flex overflow-hidden rounded-md border border-zinc-200 text-sm">
+          <button
+            type="button"
+            className={`flex-1 py-2 transition-colors ${
+              mode === 'pattern'
+                ? 'bg-slate-700 text-white'
+                : 'text-zinc-600 hover:bg-zinc-50'
+            }`}
+            onClick={() => setMode('pattern')}
+          >
+            パターン
+          </button>
+          <button
+            type="button"
+            className={`flex-1 py-2 transition-colors ${
+              mode === 'time'
+                ? 'bg-slate-700 text-white'
+                : 'text-zinc-600 hover:bg-zinc-50'
+            }`}
+            onClick={() => setMode('time')}
+          >
+            時間指定
+          </button>
+        </div>
+      )}
+
+      {mode === 'pattern' && (
+        <div className="mb-4 grid grid-cols-3 gap-2">
+          {patterns.map((p) => (
+            <button
+              type="button"
+              key={p.shift_pattern_id}
+              disabled={saving}
+              className="rounded-md border border-zinc-200 py-2 text-sm text-zinc-700 transition-colors hover:border-slate-700 hover:bg-slate-700 hover:text-white disabled:opacity-50"
+              onClick={() => handlePatternSave(p)}
+            >
+              <div>{p.pattern_name}</div>
+              <div className="text-[10px] opacity-70">
+                {minutesToDisplay(p.start_minutes)}–
+                {minutesToDisplay(p.end_minutes)}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {mode === 'time' && (
+        <div className="mb-4 flex items-center gap-2">
+          <select
+            className="flex-1 rounded-md border border-zinc-200 px-2 py-2 text-sm"
+            value={startInput}
+            onChange={(e) => setStartInput(e.target.value)}
+          >
+            <option value="">開始</option>
+            {timeOptions.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          <span className="text-sm text-zinc-400">〜</span>
+          <select
+            className="flex-1 rounded-md border border-zinc-200 px-2 py-2 text-sm"
+            value={endInput}
+            onChange={(e) => setEndInput(e.target.value)}
+          >
+            <option value="">終了</option>
+            {timeOptions.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {mode === 'time' && (
+        <button
+          type="button"
+          disabled={saving || !startInput || !endInput}
+          className="w-full rounded-md bg-slate-700 py-2 text-sm text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={handleTimeSave}
+        >
+          {saving ? '保存中...' : '保存'}
+        </button>
+      )}
+    </div>
+  )
 }
 
 export function ScheduleGantt({
@@ -122,6 +295,13 @@ export function ScheduleGantt({
   const lastDrag = useRef<{ staffId: string; s: number; e: number } | null>(
     null
   )
+
+  const [isTouchDevice, setIsTouchDevice] = useState(false)
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  }, [])
+
+  const [tapModal, setTapModal] = useState<TapEditModal | null>(null)
 
   const minuteFromClientX = useCallback(
     (staffId: string, clientX: number) => {
@@ -346,6 +526,7 @@ export function ScheduleGantt({
   }
 
   return (
+    <>
     <div className="mt-6 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
       <div className="flex items-center gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-2">
         <h2 className="text-sm font-semibold text-zinc-900">タイムライン</h2>
@@ -439,7 +620,30 @@ export function ScheduleGantt({
                 ref={(el) => setTrack(s.staff_id, el)}
                 role="presentation"
                 className="relative h-10 cursor-default bg-white"
-                onClick={(e) => clickEmpty(s.staff_id, e)}
+                onClick={(e) => {
+                  if (isTouchDevice) {
+                    e.stopPropagation()
+                    const existing = shiftByStaff.get(s.staff_id)
+                    setTapModal({
+                      staffId: s.staff_id,
+                      staffName: s.staff_name,
+                      initStartMin: existing
+                        ? isoToMinutesFromWorkDateMidnight(
+                            existing.scheduled_start_at,
+                            workDate
+                          )
+                        : null,
+                      initEndMin: existing?.scheduled_end_at
+                        ? isoToMinutesFromWorkDateMidnight(
+                            existing.scheduled_end_at,
+                            workDate
+                          )
+                        : null,
+                    })
+                    return
+                  }
+                  clickEmpty(s.staff_id, e)
+                }}
               >
                 {hourTicks.map((tick) => (
                   <div
@@ -472,7 +676,27 @@ export function ScheduleGantt({
                       left: `${leftPct}%`,
                       width: `${Math.max(widthPct, 0)}%`,
                     }}
-                    onClick={(ev) => ev.stopPropagation()}
+                    onClick={(ev) => {
+                      ev.stopPropagation()
+                      if (!isTouchDevice) return
+                      const existing = shiftByStaff.get(s.staff_id)
+                      setTapModal({
+                        staffId: s.staff_id,
+                        staffName: s.staff_name,
+                        initStartMin: existing
+                          ? isoToMinutesFromWorkDateMidnight(
+                              existing.scheduled_start_at,
+                              workDate
+                            )
+                          : null,
+                        initEndMin: existing?.scheduled_end_at
+                          ? isoToMinutesFromWorkDateMidnight(
+                              existing.scheduled_end_at,
+                              workDate
+                            )
+                          : null,
+                      })
+                    }}
                     role="presentation"
                   >
                     <div
@@ -527,5 +751,28 @@ export function ScheduleGantt({
         })}
       </div>
     </div>
+
+    {tapModal && isTouchDevice && (
+      <div
+        className="fixed inset-0 z-[200] flex items-end justify-center bg-black/40 sm:items-center"
+        onClick={() => setTapModal(null)}
+      >
+        <div
+          className="w-full rounded-t-2xl border border-zinc-200 bg-white p-5 pb-8 shadow-xl sm:max-w-sm sm:rounded-xl sm:pb-5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <TapEditForm
+            key={`${tapModal.staffId}-${tapModal.initStartMin ?? 's'}-${tapModal.initEndMin ?? 'e'}`}
+            modal={tapModal}
+            patternsById={patternsById}
+            ganttStart={settings.gantt_start_minutes}
+            ganttEnd={settings.gantt_end_minutes}
+            onSave={onSave}
+            onClose={() => setTapModal(null)}
+          />
+        </div>
+      </div>
+    )}
+    </>
   )
 }
