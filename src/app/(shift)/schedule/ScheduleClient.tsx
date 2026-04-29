@@ -31,6 +31,31 @@ import { ScheduleGantt } from '@/app/(shift)/schedule/ScheduleGantt'
 import { logoutAndRedirectToLogin } from '@/lib/logout-client'
 export type { StaffRow }
 
+function MonthNavSpinner() {
+  return (
+    <svg
+      className="h-3 w-3 animate-spin"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8v8z"
+      />
+    </svg>
+  )
+}
+
 type Props = SchedulePageData & {
   session: SessionUser
   role: 'general' | 'leader'
@@ -61,6 +86,7 @@ export function ScheduleClient(init: Props) {
   const [viewMode, setViewMode] = useState<'request' | 'shift'>('request')
   const [ganttWorkDate, setGanttWorkDate] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false)
 
   const effectiveViewMode =
     role === 'general' ? 'shift' : viewMode
@@ -209,6 +235,11 @@ export function ScheduleClient(init: Props) {
 
   const prevPath = buildSchedulePath(viewRange.prevStart, scheduleViewKind)
   const nextPath = buildSchedulePath(viewRange.nextStart, scheduleViewKind)
+
+  function goMonthNav(path: string) {
+    setIsNavigating(true)
+    router.push(path)
+  }
   const staffName = session.staff_name
   const publishStatus =
     publishForRange?.status === 'published' ? 'published' : 'draft'
@@ -239,21 +270,31 @@ export function ScheduleClient(init: Props) {
           </div>
 
           <div className="ml-2 flex shrink-0 items-center gap-1">
-            <Link
-              href={prevPath}
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50 transition-colors"
+            <button
+              type="button"
+              aria-label="前の期間へ"
+              disabled={isNavigating}
+              onClick={() => goMonthNav(prevPath)}
+              className={`flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors hover:border-zinc-300 hover:bg-zinc-50 ${
+                isNavigating ? 'pointer-events-none opacity-50' : ''
+              }`}
             >
-              ‹
-            </Link>
+              {isNavigating ? <MonthNavSpinner /> : '‹'}
+            </button>
             <span className="min-w-[6rem] text-center text-sm font-semibold text-zinc-700">
               {viewRange.viewLabel}
             </span>
-            <Link
-              href={nextPath}
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50 transition-colors"
+            <button
+              type="button"
+              aria-label="次の期間へ"
+              disabled={isNavigating}
+              onClick={() => goMonthNav(nextPath)}
+              className={`flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors hover:border-zinc-300 hover:bg-zinc-50 ${
+                isNavigating ? 'pointer-events-none opacity-50' : ''
+              }`}
             >
-              ›
-            </Link>
+              {isNavigating ? <MonthNavSpinner /> : '›'}
+            </button>
           </div>
 
           <select
@@ -374,21 +415,31 @@ export function ScheduleClient(init: Props) {
             ☰
           </button>
 
-          <Link
-            href={prevPath}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50 transition-colors"
+          <button
+            type="button"
+            aria-label="前の期間へ"
+            disabled={isNavigating}
+            onClick={() => goMonthNav(prevPath)}
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-50 ${
+              isNavigating ? 'pointer-events-none opacity-50' : ''
+            }`}
           >
-            ‹
-          </Link>
+            {isNavigating ? <MonthNavSpinner /> : '‹'}
+          </button>
           <span className="min-w-[5rem] shrink-0 whitespace-nowrap text-center text-xs font-semibold text-zinc-700">
             {viewRange.viewLabel}
           </span>
-          <Link
-            href={nextPath}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50 transition-colors"
+          <button
+            type="button"
+            aria-label="次の期間へ"
+            disabled={isNavigating}
+            onClick={() => goMonthNav(nextPath)}
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-50 ${
+              isNavigating ? 'pointer-events-none opacity-50' : ''
+            }`}
           >
-            ›
-          </Link>
+            {isNavigating ? <MonthNavSpinner /> : '›'}
+          </button>
 
           <select
             className="shrink-0 rounded-md border border-zinc-200 bg-white px-1.5 py-1 text-xs text-zinc-700 focus:outline-none"
@@ -443,6 +494,39 @@ export function ScheduleClient(init: Props) {
               <div className="border-b border-zinc-100 bg-zinc-50 px-4 py-3">
                 <p className="text-xs font-bold text-zinc-900">{storeName}</p>
                 <p className="mt-0.5 text-xs text-zinc-500">{staffName}</p>
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    aria-label="前の期間へ"
+                    disabled={isNavigating}
+                    onClick={() => {
+                      goMonthNav(prevPath)
+                      setMenuOpen(false)
+                    }}
+                    className={`flex h-8 w-8 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors hover:bg-white ${
+                      isNavigating ? 'pointer-events-none opacity-50' : ''
+                    }`}
+                  >
+                    {isNavigating ? <MonthNavSpinner /> : '‹'}
+                  </button>
+                  <span className="min-w-[5rem] shrink-0 text-center text-xs font-semibold text-zinc-700">
+                    {viewRange.viewLabel}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="次の期間へ"
+                    disabled={isNavigating}
+                    onClick={() => {
+                      goMonthNav(nextPath)
+                      setMenuOpen(false)
+                    }}
+                    className={`flex h-8 w-8 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors hover:bg-white ${
+                      isNavigating ? 'pointer-events-none opacity-50' : ''
+                    }`}
+                  >
+                    {isNavigating ? <MonthNavSpinner /> : '›'}
+                  </button>
+                </div>
               </div>
               <Link
                 href="/request"

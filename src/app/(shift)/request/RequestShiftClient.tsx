@@ -92,6 +92,31 @@ function deadlinePassedForSel(
   return isDeadlineExpiredVsToday(meta.deadlineYmd, todayStr)
 }
 
+function SubmitSpinner() {
+  return (
+    <svg
+      className="h-3 w-3 shrink-0 animate-spin"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8v8z"
+      />
+    </svg>
+  )
+}
+
 function rowToPayload(rv: RowVals): UpsertShiftRowPayload {
   if (rv.mode === 'pattern') {
     if (!rv.patternId) {
@@ -113,6 +138,8 @@ function rowToPayload(rv: RowVals): UpsertShiftRowPayload {
     custom_end_minutes: rv.customEnd,
   }
 }
+
+type SubmitUiState = 'idle' | 'submitting' | 'done'
 
 export type Props = {
   session: SessionUser
@@ -283,6 +310,12 @@ export function RequestShiftClient(props: Props) {
 
   const [rows, setRows] = useState<Record<string, RowVals>>({})
 
+  const [submitUi, setSubmitUi] = useState<SubmitUiState>('idle')
+  const [submitSuccessContextKey, setSubmitSuccessContextKey] = useState<
+    string | null
+  >(null)
+  const submitContextKey = `${targetMonthFirst}|${grid.period_type}|${periodFirst}`
+
   useEffect(() => {
     const next: Record<string, RowVals> = {}
     const byDate = new Map(savedForPeriod.map((r) => [r.work_date, r]))
@@ -294,6 +327,8 @@ export function RequestShiftClient(props: Props) {
   }, [halfOpts, rowDefault, savedForPeriod, workDates])
 
   async function submit() {
+    if (submitUi === 'submitting') return
+
     const payloadRows: Record<string, UpsertShiftRowPayload> = {}
     for (const d of workDates) {
       const rv = rows[d]
@@ -304,6 +339,7 @@ export function RequestShiftClient(props: Props) {
       payloadRows[d] = rowToPayload(rv)
     }
 
+    setSubmitUi('submitting')
     const res = await upsertShiftRequests({
       target_month: targetMonthFirst,
       periodSel,
@@ -311,11 +347,22 @@ export function RequestShiftClient(props: Props) {
     })
     if (!res.ok) {
       alert(res.error)
+      setSubmitSuccessContextKey(null)
+      setSubmitUi('idle')
       return
     }
-    setEditing(false)
-    router.refresh()
+    setSubmitSuccessContextKey(submitContextKey)
+    setSubmitUi('done')
+    window.setTimeout(() => {
+      setEditing(false)
+      router.refresh()
+    }, 1000)
   }
+
+  const showSubmitDonePulse =
+    submitUi === 'done' &&
+    !isSubmitted &&
+    submitSuccessContextKey === submitContextKey
 
   const monthSummaryLabel = useMemo(
     () =>
@@ -645,7 +692,11 @@ export function RequestShiftClient(props: Props) {
               <button
                 type="button"
                 className="mt-3 rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
-                onClick={() => setEditing(true)}
+                onClick={() => {
+                  setSubmitSuccessContextKey(null)
+                  setSubmitUi('idle')
+                  setEditing(true)
+                }}
               >
                 修正する
               </button>
@@ -697,15 +748,34 @@ export function RequestShiftClient(props: Props) {
           <div className="mt-6 pb-4">
             <button
               type="button"
-              className="w-full rounded-lg bg-slate-700 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className={`flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                showSubmitDonePulse
+                  ? 'bg-emerald-600 hover:bg-emerald-600 disabled:hover:bg-emerald-600'
+                  : 'bg-slate-700 hover:bg-slate-800'
+              } ${
+                submitUi === 'submitting'
+                  ? 'cursor-not-allowed disabled:!opacity-70'
+                  : ''
+              }`}
               disabled={
+                submitUi === 'submitting' ||
+                showSubmitDonePulse ||
                 (!!isSubmitted && !editing) ||
                 workDates.length === 0 ||
                 formLocked
               }
-              onClick={submit}
+              onClick={() => void submit()}
             >
-              この内容で希望を提出する
+              {submitUi === 'submitting' ? (
+                <>
+                  <SubmitSpinner />
+                  送信中...
+                </>
+              ) : showSubmitDonePulse ? (
+                '✓ 提出しました'
+              ) : (
+                'この内容で希望を提出する'
+              )}
             </button>
           </div>
         ) : null}
