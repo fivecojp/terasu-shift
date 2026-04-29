@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   type UpsertShiftRowPayload,
   upsertShiftRequests,
@@ -10,7 +10,6 @@ import {
 import {
   computeDeadlineYmd,
   defaultPeriodSelForMonth,
-  findFirstOpenPeriodInMonth,
   isDeadlineExpiredVsToday,
   listHalfHourOptions,
   listPeriodsWithDeadlines,
@@ -31,6 +30,54 @@ import { RequestDateRow, type RowVals, type Tone } from '@/app/(shift)/request/R
 import { logoutAndRedirectToLogin } from '@/lib/logout-client'
 
 const WD = ['日', '月', '火', '水', '木', '金', '土'] as const
+
+function periodSelKey(sel: PeriodSel): string {
+  switch (sel.kind) {
+    case 'monthly':
+      return 'monthly'
+    case 'semimonthly':
+      return `semimonthly:${sel.phase}`
+    case 'weekly':
+      return `weekly:${sel.weekId}`
+    case 'biweekly':
+      return `biweekly:${sel.biweekId}`
+    default:
+      return 'unknown'
+  }
+}
+
+function buildRequestPathForSel(ym7: string, sel: PeriodSel): string {
+  const params = new URLSearchParams({ ym: ym7 })
+  switch (sel.kind) {
+    case 'monthly':
+      params.set('period', 'monthly')
+      break
+    case 'semimonthly':
+      params.set('period', sel.phase)
+      break
+    case 'weekly':
+      params.set('period', 'weekly')
+      params.set('weekId', sel.weekId)
+      break
+    case 'biweekly':
+      params.set('period', 'biweekly')
+      params.set('biweekId', sel.biweekId)
+      break
+    default:
+      break
+  }
+  return `/request?${params.toString()}`
+}
+
+function requestSearchStringsEqual(a: string, b: string): boolean {
+  const qa = new URLSearchParams(a.startsWith('?') ? a.slice(1) : a)
+  const qb = new URLSearchParams(b.startsWith('?') ? b.slice(1) : b)
+  const keys = new Set([...qa.keys(), ...qb.keys()])
+  for (const k of keys) {
+    if (qa.get(k) !== qb.get(k)) return false
+  }
+  return true
+}
 
 function formatShortDateLabel(ymd: string): string {
   const d = parseYmd(ymd)
@@ -152,6 +199,8 @@ export type Props = {
   targetMonthFirst: string
   /** YYYY-MM for query link */
   ymQuery: string
+  initialPeriodSel: PeriodSel
+  nextPeriodPath: string | null
 }
 
 export function RequestShiftClient(props: Props) {
@@ -164,9 +213,18 @@ export function RequestShiftClient(props: Props) {
     requests,
     targetMonthFirst,
     ymQuery,
+    initialPeriodSel,
+    nextPeriodPath,
   } = props
 
   const router = useRouter()
+  const nextPeriodPathRef = useRef(nextPeriodPath)
+
+  useEffect(() => {
+    nextPeriodPathRef.current = nextPeriodPath
+  }, [nextPeriodPath])
+
+  const initPeriodKeyRef = useRef(periodSelKey(initialPeriodSel))
   const ym = ymParamToTargetFirst(ymQuery) ?? targetMonthFirst.slice(0, 7)
 
   const todayStr = new Date().toLocaleDateString('sv-SE')
@@ -214,10 +272,25 @@ export function RequestShiftClient(props: Props) {
     [settings.gantt_end_minutes, settings.gantt_start_minutes]
   )
 
-  const [periodSel, setPeriodSel] = useState<PeriodSel>(() => {
-    const open = findFirstOpenPeriodInMonth(targetMonthFirst, settings, todayStr)
-    return open?.sel ?? defaultPeriodSelForMonth(settings, targetMonthFirst)
-  })
+  const [periodSel, setPeriodSel] = useState<PeriodSel>(() => initialPeriodSel)
+
+  useEffect(() => {
+    const k = periodSelKey(initialPeriodSel)
+    if (initPeriodKeyRef.current !== k) {
+      initPeriodKeyRef.current = k
+      setPeriodSel(initialPeriodSel)
+    }
+  }, [initialPeriodSel])
+
+  useEffect(() => {
+    const want = buildRequestPathForSel(ymQuery, periodSel)
+    const wantQs = want.includes('?') ? `?${want.split('?')[1]}` : ''
+    if (typeof window !== 'undefined') {
+      const curQs = window.location.search || ''
+      if (requestSearchStringsEqual(curQs, wantQs)) return
+      router.replace(want)
+    }
+  }, [ymQuery, periodSel, router])
 
   useEffect(() => {
     const periods = listPeriodsWithDeadlines(targetMonthFirst, settings)
@@ -354,8 +427,13 @@ export function RequestShiftClient(props: Props) {
     setSubmitSuccessContextKey(submitContextKey)
     setSubmitUi('done')
     window.setTimeout(() => {
-      setEditing(false)
-      router.refresh()
+      const dest = nextPeriodPathRef.current
+      if (dest) {
+        router.push(dest)
+      } else {
+        setEditing(false)
+        router.refresh()
+      }
     }, 1000)
   }
 
@@ -777,6 +855,13 @@ export function RequestShiftClient(props: Props) {
                 'この内容で希望を提出する'
               )}
             </button>
+            {submitUi === 'done' && showSubmitDonePulse ? (
+              <p className="mt-2 animate-pulse text-center text-xs text-emerald-600">
+                {nextPeriodPath
+                  ? '次の期間に移動します...'
+                  : '提出が完了しました'}
+              </p>
+            ) : null}
           </div>
         ) : null}
       </main>

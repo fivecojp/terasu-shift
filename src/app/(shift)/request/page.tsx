@@ -1,19 +1,127 @@
 import { redirect } from 'next/navigation'
 import { getSession, getSessionPayload } from '@/lib/auth'
 import {
+  addOneMonthFirst,
+  defaultPeriodSelForMonth,
+  findFirstOpenPeriodInMonth,
+  isDeadlineExpiredVsToday,
+  listPeriodsWithDeadlines,
+  listWeekSlicesInMonth,
   monthRangeInclusive,
+  pairBiweeklySlices,
+  parseYmd,
+  periodSelEquals,
   resolveDefaultRequestMonthAndPeriod,
+  type PeriodSel,
+  weekStartsOnFromSettings,
   ymParamToTargetFirst,
 } from '@/lib/shift-request-periods'
 import { ensureShiftSettingsForStore } from '@/lib/shift-settings-ensure'
 import { createServiceClient } from '@/lib/supabase/service'
-import type { ShiftPattern, ShiftRequest } from '@/types/database'
+import type { ShiftPattern, ShiftRequest, ShiftSetting } from '@/types/database'
 import { RequestShiftClient } from '@/app/(shift)/request/RequestShiftClient'
+
+function buildRequestPathForSel(ym7: string, sel: PeriodSel): string {
+  const params = new URLSearchParams({ ym: ym7 })
+  switch (sel.kind) {
+    case 'monthly':
+      params.set('period', 'monthly')
+      break
+    case 'semimonthly':
+      params.set('period', sel.phase)
+      break
+    case 'weekly':
+      params.set('period', 'weekly')
+      params.set('weekId', sel.weekId)
+      break
+    case 'biweekly':
+      params.set('period', 'biweekly')
+      params.set('biweekId', sel.biweekId)
+      break
+    default:
+      break
+  }
+  return `/request?${params.toString()}`
+}
+
+function parsePeriodSelFromSearchParams(
+  settings: ShiftSetting,
+  targetMonthFirst: string,
+  sp: { period?: string; weekId?: string; biweekId?: string }
+): PeriodSel | null {
+  const raw = sp.period
+  if (!raw) return null
+  const ymd = parseYmd(targetMonthFirst)
+  const y = ymd.getFullYear()
+  const m = ymd.getMonth()
+  const wk = weekStartsOnFromSettings(settings.week_start_day)
+  const weeks = listWeekSlicesInMonth(y, m, wk)
+  const biweeks = pairBiweeklySlices(weeks)
+
+  switch (settings.shift_cycle) {
+    case 'monthly':
+      if (raw === 'monthly') return { kind: 'monthly' }
+      return null
+    case 'semimonthly':
+      if (raw === 'first_half') {
+        return { kind: 'semimonthly', phase: 'first_half' }
+      }
+      if (raw === 'second_half') {
+        return { kind: 'semimonthly', phase: 'second_half' }
+      }
+      return null
+    case 'weekly':
+      if (raw !== 'weekly' || !sp.weekId) return null
+      return weeks.some((w) => w.id === sp.weekId)
+        ? { kind: 'weekly', weekId: sp.weekId }
+        : null
+    case 'biweekly':
+      if (raw !== 'biweekly' || !sp.biweekId) return null
+      return biweeks.some((b) => b.id === sp.biweekId)
+        ? { kind: 'biweekly', biweekId: sp.biweekId }
+        : null
+    default:
+      return null
+  }
+}
+
+function resolveNextPeriodPath(
+  targetMonthFirst: string,
+  currentSel: PeriodSel,
+  settings: ShiftSetting,
+  todayYmd: string
+): string | null {
+  const periods = listPeriodsWithDeadlines(targetMonthFirst, settings)
+  const currentIdx = periods.findIndex((p) => periodSelEquals(p.sel, currentSel))
+  const startIdx = currentIdx >= 0 ? currentIdx + 1 : 0
+
+  for (let i = startIdx; i < periods.length; i++) {
+    const p = periods[i]
+    if (!p) continue
+    if (!isDeadlineExpiredVsToday(p.deadlineYmd, todayYmd)) {
+      return buildRequestPathForSel(targetMonthFirst.slice(0, 7), p.sel)
+    }
+  }
+
+  const nextMonthFirst = addOneMonthFirst(targetMonthFirst)
+  for (const p of listPeriodsWithDeadlines(nextMonthFirst, settings)) {
+    if (!isDeadlineExpiredVsToday(p.deadlineYmd, todayYmd)) {
+      return buildRequestPathForSel(nextMonthFirst.slice(0, 7), p.sel)
+    }
+  }
+
+  return null
+}
 
 export default async function RequestPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ym?: string }>
+  searchParams: Promise<{
+    ym?: string
+    period?: string
+    weekId?: string
+    biweekId?: string
+  }>
 }) {
   const session = await getSession()
   if (!session) redirect('/login')
@@ -35,16 +143,40 @@ export default async function RequestPage({
 
   const sp = await searchParams
   const ymFromQuery = ymParamToTargetFirst(sp.ym ?? null)
+
+  const todayYmdJst = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Tokyo',
+  })
+    .format(new Date())
+    .slice(0, 10)
+
   if (!ymFromQuery) {
-    const todayYmdJst = new Intl.DateTimeFormat('sv-SE', {
-      timeZone: 'Asia/Tokyo',
-    })
-      .format(new Date())
-      .slice(0, 10)
     const resolved = resolveDefaultRequestMonthAndPeriod(settingsRow, todayYmdJst)
-    redirect(`/request?ym=${resolved.targetMonthFirst.slice(0, 7)}`)
+    redirect(
+      buildRequestPathForSel(
+        resolved.targetMonthFirst.slice(0, 7),
+        resolved.periodSel
+      )
+    )
   }
   const targetMonthFirst = ymFromQuery
+
+  const parsedFromUrl = parsePeriodSelFromSearchParams(settingsRow, targetMonthFirst, {
+    period: sp.period,
+    weekId: sp.weekId,
+    biweekId: sp.biweekId,
+  })
+  const initialPeriodSel: PeriodSel =
+    parsedFromUrl ??
+    findFirstOpenPeriodInMonth(targetMonthFirst, settingsRow, todayYmdJst)?.sel ??
+    defaultPeriodSelForMonth(settingsRow, targetMonthFirst)
+
+  const nextPeriodPath = resolveNextPeriodPath(
+    targetMonthFirst,
+    initialPeriodSel,
+    settingsRow,
+    todayYmdJst
+  )
 
   const { startYmd: holStart, endYmd: holEnd } = monthRangeInclusive(
     targetMonthFirst
@@ -84,6 +216,8 @@ export default async function RequestPage({
       requests={(reqRows ?? []) as ShiftRequest[]}
       targetMonthFirst={targetMonthFirst}
       ymQuery={ymQuery}
+      initialPeriodSel={initialPeriodSel}
+      nextPeriodPath={nextPeriodPath}
     />
   )
 }
