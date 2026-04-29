@@ -1,5 +1,11 @@
 import type { ShiftSetting } from '@/types/database'
 
+/** 期間・締切の解決に必要な設定（クライアントへ渡せるスライス） */
+export type PeriodSettingsForRequest = Pick<
+  ShiftSetting,
+  'shift_cycle' | 'week_start_day' | 'deadline_type' | 'deadline_value'
+>
+
 /** DB shift_requests.period_type */
 export type ShiftRequestPeriodType = 'first_half' | 'second_half' | 'full'
 
@@ -154,7 +160,7 @@ export type PeriodSel =
 /** 画面上の選択に対応する period_type と日付リスト */
 export function resolveGridForSelection(
   targetMonthFirst: string,
-  settings: ShiftSetting,
+  settings: PeriodSettingsForRequest,
   sel: PeriodSel
 ): { period_type: ShiftRequestPeriodType; workDates: string[] } {
   const ym = parseYmd(targetMonthFirst)
@@ -214,7 +220,7 @@ export function resolveGridForSelection(
  * 締切：対象「期間の最初の日」の手前にある提出期限日（カレンダー日）
  */
 export function computeDeadlineYmd(
-  settings: ShiftSetting,
+  settings: PeriodSettingsForRequest,
   periodFirstDayYmd: string
 ): string {
   const d = parseYmd(periodFirstDayYmd)
@@ -253,7 +259,7 @@ export type PeriodDeadlineInfo = {
 /** 対象月に存在する提出単位ごとの締切（computeDeadlineYmd の結果を利用） */
 export function listPeriodsWithDeadlines(
   targetMonthFirst: string,
-  settings: ShiftSetting
+  settings: PeriodSettingsForRequest
 ): PeriodDeadlineInfo[] {
   const ym = parseYmd(targetMonthFirst)
   const y = ym.getFullYear()
@@ -320,7 +326,7 @@ export function periodSelEquals(a: PeriodSel, b: PeriodSel): boolean {
 /** その月中に締切がまだ valid な提出単位が1つでもあるか */
 export function monthHasAnyOpenPeriod(
   targetMonthFirst: string,
-  settings: ShiftSetting,
+  settings: PeriodSettingsForRequest,
   todayYmd: string
 ): boolean {
   return listPeriodsWithDeadlines(targetMonthFirst, settings).some(
@@ -331,7 +337,7 @@ export function monthHasAnyOpenPeriod(
 /** 指定月において締切前の最初の提出単位（listPeriodsWithDeadlines の並び順） */
 export function findFirstOpenPeriodInMonth(
   targetMonthFirst: string,
-  settings: ShiftSetting,
+  settings: PeriodSettingsForRequest,
   todayYmd: string
 ): PeriodDeadlineInfo | null {
   for (const p of listPeriodsWithDeadlines(targetMonthFirst, settings)) {
@@ -350,7 +356,7 @@ export function addOneMonthFirst(targetMonthFirst: string): string {
  * 週・隔週はその月の週一覧の先頭を使う。
  */
 export function defaultPeriodSelForMonth(
-  settings: ShiftSetting,
+  settings: PeriodSettingsForRequest,
   targetMonthFirst: string
 ): PeriodSel {
   const ymd = parseYmd(targetMonthFirst)
@@ -383,7 +389,7 @@ export function defaultPeriodSelForMonth(
  * 両方とも全期間締切済みのときは今月 + 先頭期間（従来どおり）を返す。
  */
 export function resolveDefaultRequestMonthAndPeriod(
-  settings: ShiftSetting,
+  settings: PeriodSettingsForRequest,
   todayYmd: string
 ): { targetMonthFirst: string; periodSel: PeriodSel } {
   const thisMonth = defaultTargetMonth()
@@ -436,4 +442,57 @@ export function listHalfHourOptions(start: number, end: number): number[] {
     out.push(end)
   }
   return out
+}
+
+/** `/request?...` へのパス（希望提出画面の期間切り替え・遷移用） */
+export function buildRequestPathForSel(ym7: string, sel: PeriodSel): string {
+  const params = new URLSearchParams({ ym: ym7 })
+  switch (sel.kind) {
+    case 'monthly':
+      params.set('period', 'monthly')
+      break
+    case 'semimonthly':
+      params.set('period', sel.phase)
+      break
+    case 'weekly':
+      params.set('period', 'weekly')
+      params.set('weekId', sel.weekId)
+      break
+    case 'biweekly':
+      params.set('period', 'biweekly')
+      params.set('biweekId', sel.biweekId)
+      break
+    default:
+      break
+  }
+  return `/request?${params.toString()}`
+}
+
+/** 現在の期間の次で、まだ締切前の希望提出先 URL パス（なければ null） */
+export function resolveNextPeriodPath(
+  targetMonthFirst: string,
+  currentSel: PeriodSel,
+  settings: PeriodSettingsForRequest,
+  todayYmd: string
+): string | null {
+  const periods = listPeriodsWithDeadlines(targetMonthFirst, settings)
+  const currentIdx = periods.findIndex((p) => periodSelEquals(p.sel, currentSel))
+  const startIdx = currentIdx >= 0 ? currentIdx + 1 : 0
+
+  for (let i = startIdx; i < periods.length; i++) {
+    const p = periods[i]
+    if (!p) continue
+    if (!isDeadlineExpiredVsToday(p.deadlineYmd, todayYmd)) {
+      return buildRequestPathForSel(targetMonthFirst.slice(0, 7), p.sel)
+    }
+  }
+
+  const nextMonthFirst = addOneMonthFirst(targetMonthFirst)
+  for (const p of listPeriodsWithDeadlines(nextMonthFirst, settings)) {
+    if (!isDeadlineExpiredVsToday(p.deadlineYmd, todayYmd)) {
+      return buildRequestPathForSel(nextMonthFirst.slice(0, 7), p.sel)
+    }
+  }
+
+  return null
 }

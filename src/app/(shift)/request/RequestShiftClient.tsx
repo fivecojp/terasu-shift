@@ -8,6 +8,7 @@ import {
   upsertShiftRequests,
 } from '@/app/(shift)/request/actions'
 import {
+  buildRequestPathForSel,
   computeDeadlineYmd,
   defaultPeriodSelForMonth,
   isDeadlineExpiredVsToday,
@@ -19,8 +20,10 @@ import {
   parseYmd,
   periodSelEquals,
   resolveGridForSelection,
+  resolveNextPeriodPath,
   type PeriodDeadlineInfo,
   type PeriodSel,
+  type PeriodSettingsForRequest,
   weekStartsOnFromSettings,
   ymParamToTargetFirst,
 } from '@/lib/shift-request-periods'
@@ -44,29 +47,6 @@ function periodSelKey(sel: PeriodSel): string {
     default:
       return 'unknown'
   }
-}
-
-function buildRequestPathForSel(ym7: string, sel: PeriodSel): string {
-  const params = new URLSearchParams({ ym: ym7 })
-  switch (sel.kind) {
-    case 'monthly':
-      params.set('period', 'monthly')
-      break
-    case 'semimonthly':
-      params.set('period', sel.phase)
-      break
-    case 'weekly':
-      params.set('period', 'weekly')
-      params.set('weekId', sel.weekId)
-      break
-    case 'biweekly':
-      params.set('period', 'biweekly')
-      params.set('biweekId', sel.biweekId)
-      break
-    default:
-      break
-  }
-  return `/request?${params.toString()}`
 }
 
 function requestSearchStringsEqual(a: string, b: string): boolean {
@@ -132,11 +112,11 @@ function requestToRow(r: ShiftRequest, half: number[]): RowVals {
 function deadlinePassedForSel(
   infos: PeriodDeadlineInfo[],
   sel: PeriodSel,
-  todayStr: string
+  todayYmdArg: string
 ): boolean {
   const meta = infos.find((p) => periodSelEquals(p.sel, sel))
   if (!meta) return false
-  return isDeadlineExpiredVsToday(meta.deadlineYmd, todayStr)
+  return isDeadlineExpiredVsToday(meta.deadlineYmd, todayYmdArg)
 }
 
 function SubmitSpinner() {
@@ -192,6 +172,10 @@ export type Props = {
   session: SessionUser
   storeCount: number
   settings: ShiftSetting
+  /** 次期間パス算出用（締切・週始まり・提出サイクルのみ） */
+  settingsForClient: PeriodSettingsForRequest
+  /** JST の今日 YYYY-MM-DD */
+  todayYmd: string
   patterns: ShiftPattern[]
   holidays: { holiday_date: string }[]
   requests: ShiftRequest[]
@@ -200,7 +184,6 @@ export type Props = {
   /** YYYY-MM for query link */
   ymQuery: string
   initialPeriodSel: PeriodSel
-  nextPeriodPath: string | null
 }
 
 export function RequestShiftClient(props: Props) {
@@ -208,26 +191,20 @@ export function RequestShiftClient(props: Props) {
     session,
     storeCount,
     settings,
+    settingsForClient,
+    todayYmd,
     patterns,
     holidays,
     requests,
     targetMonthFirst,
     ymQuery,
     initialPeriodSel,
-    nextPeriodPath,
   } = props
 
   const router = useRouter()
-  const nextPeriodPathRef = useRef(nextPeriodPath)
-
-  useEffect(() => {
-    nextPeriodPathRef.current = nextPeriodPath
-  }, [nextPeriodPath])
 
   const initPeriodKeyRef = useRef(periodSelKey(initialPeriodSel))
   const ym = ymParamToTargetFirst(ymQuery) ?? targetMonthFirst.slice(0, 7)
-
-  const todayStr = new Date().toLocaleDateString('sv-SE')
 
   const ymNow = new Date()
   const ym0 = `${ymNow.getFullYear()}-${String(ymNow.getMonth() + 1).padStart(2, '0')}`
@@ -240,12 +217,12 @@ export function RequestShiftClient(props: Props) {
   const month0HasOpen = monthHasAnyOpenPeriod(
     targetMonthFirstYm0,
     settings,
-    todayStr
+    todayYmd
   )
   const month1HasOpen = monthHasAnyOpenPeriod(
     targetMonthFirstYm1,
     settings,
-    todayStr
+    todayYmd
   )
 
   const noSubmitPeriodAvailable = !month0HasOpen && !month1HasOpen
@@ -295,12 +272,12 @@ export function RequestShiftClient(props: Props) {
   useEffect(() => {
     const periods = listPeriodsWithDeadlines(targetMonthFirst, settings)
     const open = periods.filter(
-      (p) => !isDeadlineExpiredVsToday(p.deadlineYmd, todayStr)
+      (p) => !isDeadlineExpiredVsToday(p.deadlineYmd, todayYmd)
     )
     const def = defaultPeriodSelForMonth(settings, targetMonthFirst)
     const defMeta = periods.find((p) => periodSelEquals(p.sel, def))
     const defOk =
-      !!defMeta && !isDeadlineExpiredVsToday(defMeta.deadlineYmd, todayStr)
+      !!defMeta && !isDeadlineExpiredVsToday(defMeta.deadlineYmd, todayYmd)
 
     setPeriodSel((prev) => {
       const prevOk = open.find((p) => periodSelEquals(p.sel, prev))
@@ -309,7 +286,7 @@ export function RequestShiftClient(props: Props) {
       if (open[0]) return open[0].sel
       return def
     })
-  }, [settings, targetMonthFirst, todayStr])
+  }, [settings, targetMonthFirst, todayYmd])
 
   const grid = useMemo(
     () => resolveGridForSelection(targetMonthFirst, settings, periodSel),
@@ -329,19 +306,35 @@ export function RequestShiftClient(props: Props) {
     [settings, targetMonthFirst]
   )
 
+  const nextPeriodPath = useMemo(
+    () =>
+      resolveNextPeriodPath(
+        targetMonthFirst,
+        periodSel,
+        settingsForClient,
+        todayYmd
+      ),
+    [periodSel, settingsForClient, targetMonthFirst, todayYmd]
+  )
+
+  const nextPeriodPathRef = useRef(nextPeriodPath)
+  useEffect(() => {
+    nextPeriodPathRef.current = nextPeriodPath
+  }, [nextPeriodPath])
+
   const currentPeriodDeadlinePassed = deadlinePassedForSel(
     periodDeadlineInfos,
     periodSel,
-    todayStr
+    todayYmd
   )
 
   const allPeriodsExpiredThisMonth = useMemo(
     () =>
       periodDeadlineInfos.length > 0 &&
       periodDeadlineInfos.every((p) =>
-        isDeadlineExpiredVsToday(p.deadlineYmd, todayStr)
+        isDeadlineExpiredVsToday(p.deadlineYmd, todayYmd)
       ),
-    [periodDeadlineInfos, todayStr]
+    [periodDeadlineInfos, todayYmd]
   )
 
   const formLocked =
@@ -439,7 +432,6 @@ export function RequestShiftClient(props: Props) {
 
   const showSubmitDonePulse =
     submitUi === 'done' &&
-    !isSubmitted &&
     submitSuccessContextKey === submitContextKey
 
   const monthSummaryLabel = useMemo(
@@ -497,19 +489,16 @@ export function RequestShiftClient(props: Props) {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={
-              (!!isSubmitted && !editing) ||
-              deadlinePassedForSel(
-                periodDeadlineInfos,
-                { kind: 'semimonthly', phase: 'first_half' },
-                todayStr
-              )
-            }
+            disabled={deadlinePassedForSel(
+              periodDeadlineInfos,
+              { kind: 'semimonthly', phase: 'first_half' },
+              todayYmd
+            )}
             className={
               deadlinePassedForSel(
                 periodDeadlineInfos,
                 { kind: 'semimonthly', phase: 'first_half' },
-                todayStr
+                todayYmd
               )
                 ? halfBtnExpired
                 : periodSel.kind === 'semimonthly' &&
@@ -525,19 +514,16 @@ export function RequestShiftClient(props: Props) {
           </button>
           <button
             type="button"
-            disabled={
-              (!!isSubmitted && !editing) ||
-              deadlinePassedForSel(
-                periodDeadlineInfos,
-                { kind: 'semimonthly', phase: 'second_half' },
-                todayStr
-              )
-            }
+            disabled={deadlinePassedForSel(
+              periodDeadlineInfos,
+              { kind: 'semimonthly', phase: 'second_half' },
+              todayYmd
+            )}
             className={
               deadlinePassedForSel(
                 periodDeadlineInfos,
                 { kind: 'semimonthly', phase: 'second_half' },
-                todayStr
+                todayYmd
               )
                 ? halfBtnExpired
                 : periodSel.kind === 'semimonthly' &&
@@ -566,7 +552,6 @@ export function RequestShiftClient(props: Props) {
                 ? periodSel.weekId
                 : weeks[0]?.id ?? ''
             }
-            disabled={!!isSubmitted && !editing}
             onChange={(e) =>
               setPeriodSel({ kind: 'weekly', weekId: e.target.value })
             }
@@ -575,7 +560,7 @@ export function RequestShiftClient(props: Props) {
               const passed = deadlinePassedForSel(
                 periodDeadlineInfos,
                 { kind: 'weekly', weekId: w.id },
-                todayStr
+                todayYmd
               )
               return (
                 <option key={w.id} value={w.id} disabled={passed}>
@@ -600,7 +585,6 @@ export function RequestShiftClient(props: Props) {
                 ? periodSel.biweekId
                 : biweeks[0]?.id ?? ''
             }
-            disabled={!!isSubmitted && !editing}
             onChange={(e) =>
               setPeriodSel({ kind: 'biweekly', biweekId: e.target.value })
             }
@@ -609,7 +593,7 @@ export function RequestShiftClient(props: Props) {
               const passed = deadlinePassedForSel(
                 periodDeadlineInfos,
                 { kind: 'biweekly', biweekId: bw.id },
-                todayStr
+                todayYmd
               )
               return (
                 <option key={bw.id} value={bw.id} disabled={passed}>
@@ -760,16 +744,13 @@ export function RequestShiftClient(props: Props) {
           </div>
         ) : null}
 
-        {isSubmitted ? (
+        {isSubmitted && !editing ? (
           <div className="my-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
             <p className="text-sm font-semibold text-emerald-700">提出済み</p>
-            <p className="mt-1 text-xs text-emerald-600">
-              修正する場合は下のボタンを押してください
-            </p>
-            {!editing ? (
+            <div className="mt-2 flex flex-wrap gap-2">
               <button
                 type="button"
-                className="mt-3 rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+                className="rounded border border-emerald-300 px-3 py-1 text-xs text-emerald-700 transition-colors hover:bg-emerald-100"
                 onClick={() => {
                   setSubmitSuccessContextKey(null)
                   setSubmitUi('idle')
@@ -778,7 +759,16 @@ export function RequestShiftClient(props: Props) {
               >
                 修正する
               </button>
-            ) : null}
+              {nextPeriodPath ? (
+                <button
+                  type="button"
+                  className="rounded bg-slate-700 px-3 py-1 text-xs text-white transition-colors hover:bg-slate-800"
+                  onClick={() => router.push(nextPeriodPath)}
+                >
+                  次の期間へ →
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : null}
 
@@ -808,9 +798,7 @@ export function RequestShiftClient(props: Props) {
                     tone={tone}
                     patterns={patterns}
                     halfOpts={halfOpts}
-                    disabled={
-                      formLocked || (!!isSubmitted && !editing)
-                    }
+                    disabled={formLocked}
                     row={rows[d] ?? rowDefault()}
                     onChangeMode={(nv) =>
                       setRows((prev) => ({ ...prev, [d]: nv }))
@@ -838,7 +826,6 @@ export function RequestShiftClient(props: Props) {
               disabled={
                 submitUi === 'submitting' ||
                 showSubmitDonePulse ||
-                (!!isSubmitted && !editing) ||
                 workDates.length === 0 ||
                 formLocked
               }

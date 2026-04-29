@@ -1,16 +1,13 @@
 import { redirect } from 'next/navigation'
 import { getSession, getSessionPayload } from '@/lib/auth'
 import {
-  addOneMonthFirst,
+  buildRequestPathForSel,
   defaultPeriodSelForMonth,
   findFirstOpenPeriodInMonth,
-  isDeadlineExpiredVsToday,
-  listPeriodsWithDeadlines,
   listWeekSlicesInMonth,
   monthRangeInclusive,
   pairBiweeklySlices,
   parseYmd,
-  periodSelEquals,
   resolveDefaultRequestMonthAndPeriod,
   type PeriodSel,
   weekStartsOnFromSettings,
@@ -20,29 +17,6 @@ import { ensureShiftSettingsForStore } from '@/lib/shift-settings-ensure'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { ShiftPattern, ShiftRequest, ShiftSetting } from '@/types/database'
 import { RequestShiftClient } from '@/app/(shift)/request/RequestShiftClient'
-
-function buildRequestPathForSel(ym7: string, sel: PeriodSel): string {
-  const params = new URLSearchParams({ ym: ym7 })
-  switch (sel.kind) {
-    case 'monthly':
-      params.set('period', 'monthly')
-      break
-    case 'semimonthly':
-      params.set('period', sel.phase)
-      break
-    case 'weekly':
-      params.set('period', 'weekly')
-      params.set('weekId', sel.weekId)
-      break
-    case 'biweekly':
-      params.set('period', 'biweekly')
-      params.set('biweekId', sel.biweekId)
-      break
-    default:
-      break
-  }
-  return `/request?${params.toString()}`
-}
 
 function parsePeriodSelFromSearchParams(
   settings: ShiftSetting,
@@ -83,34 +57,6 @@ function parsePeriodSelFromSearchParams(
     default:
       return null
   }
-}
-
-function resolveNextPeriodPath(
-  targetMonthFirst: string,
-  currentSel: PeriodSel,
-  settings: ShiftSetting,
-  todayYmd: string
-): string | null {
-  const periods = listPeriodsWithDeadlines(targetMonthFirst, settings)
-  const currentIdx = periods.findIndex((p) => periodSelEquals(p.sel, currentSel))
-  const startIdx = currentIdx >= 0 ? currentIdx + 1 : 0
-
-  for (let i = startIdx; i < periods.length; i++) {
-    const p = periods[i]
-    if (!p) continue
-    if (!isDeadlineExpiredVsToday(p.deadlineYmd, todayYmd)) {
-      return buildRequestPathForSel(targetMonthFirst.slice(0, 7), p.sel)
-    }
-  }
-
-  const nextMonthFirst = addOneMonthFirst(targetMonthFirst)
-  for (const p of listPeriodsWithDeadlines(nextMonthFirst, settings)) {
-    if (!isDeadlineExpiredVsToday(p.deadlineYmd, todayYmd)) {
-      return buildRequestPathForSel(nextMonthFirst.slice(0, 7), p.sel)
-    }
-  }
-
-  return null
 }
 
 export default async function RequestPage({
@@ -171,12 +117,12 @@ export default async function RequestPage({
     findFirstOpenPeriodInMonth(targetMonthFirst, settingsRow, todayYmdJst)?.sel ??
     defaultPeriodSelForMonth(settingsRow, targetMonthFirst)
 
-  const nextPeriodPath = resolveNextPeriodPath(
-    targetMonthFirst,
-    initialPeriodSel,
-    settingsRow,
-    todayYmdJst
-  )
+  const settingsForClient = {
+    shift_cycle: settingsRow.shift_cycle,
+    week_start_day: settingsRow.week_start_day,
+    deadline_type: settingsRow.deadline_type,
+    deadline_value: settingsRow.deadline_value,
+  }
 
   const { startYmd: holStart, endYmd: holEnd } = monthRangeInclusive(
     targetMonthFirst
@@ -211,13 +157,14 @@ export default async function RequestPage({
       session={session}
       storeCount={storeCount}
       settings={settingsRow}
+      settingsForClient={settingsForClient}
+      todayYmd={todayYmdJst}
       patterns={(patternsRows ?? []) as ShiftPattern[]}
       holidays={holidaysRows ?? []}
       requests={(reqRows ?? []) as ShiftRequest[]}
       targetMonthFirst={targetMonthFirst}
       ymQuery={ymQuery}
       initialPeriodSel={initialPeriodSel}
-      nextPeriodPath={nextPeriodPath}
     />
   )
 }
