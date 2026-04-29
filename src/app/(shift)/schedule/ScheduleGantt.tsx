@@ -34,6 +34,7 @@ type Props = {
     startMin: number,
     endMin: number
   ) => Promise<void>
+  onDelete: (shiftId: string) => Promise<void>
 }
 
 function shiftEndMissing(sh: Shift): boolean {
@@ -75,6 +76,7 @@ type TapEditModal = {
   staffName: string
   initStartMin: number | null
   initEndMin: number | null
+  shiftId: string | null
 }
 
 type TapEditFormProps = {
@@ -84,6 +86,7 @@ type TapEditFormProps = {
   ganttEnd: number
   onSave: (staffId: string, startMin: number, endMin: number) => Promise<void>
   onClose: () => void
+  onDelete: (shiftId: string) => Promise<void>
 }
 
 function TapEditForm({
@@ -93,6 +96,7 @@ function TapEditForm({
   ganttEnd,
   onSave,
   onClose,
+  onDelete,
 }: TapEditFormProps) {
   const patterns = useMemo(
     () => Array.from(patternsById.values()).filter((p) => p.is_active),
@@ -109,6 +113,8 @@ function TapEditForm({
     modal.initEndMin !== null ? minutesToDisplay(modal.initEndMin) : ''
   )
   const [saving, setSaving] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const timeOptions = useMemo(() => {
     const opts: string[] = []
@@ -135,8 +141,28 @@ function TapEditForm({
     onClose()
   }
 
+  const deleteFooterClass =
+    'border border-rose-300 text-rose-600 hover:bg-rose-50 rounded-md px-4 py-2 text-sm transition-colors'
+  const secondaryFooterClass =
+    'border border-zinc-200 text-zinc-600 hover:bg-zinc-50 rounded-md px-4 py-2 text-sm'
+
+  const handleConfirmDelete = async () => {
+    const sid = modal.shiftId
+    if (!sid) return
+    setIsDeleting(true)
+    try {
+      await onDelete(sid)
+      setShowDeleteConfirm(false)
+      onClose()
+    } catch {
+      /* 親が alert 済み */
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
-    <div>
+    <div className="relative">
       <div className="mb-4 flex items-center justify-between">
         <div className="text-sm font-medium text-zinc-800">{modal.staffName}</div>
         <button
@@ -181,7 +207,7 @@ function TapEditForm({
             <button
               type="button"
               key={p.shift_pattern_id}
-              disabled={saving}
+              disabled={saving || isDeleting}
               className="rounded-md border border-zinc-200 py-2 text-sm text-zinc-700 transition-colors hover:border-slate-700 hover:bg-slate-700 hover:text-white disabled:opacity-50"
               onClick={() => handlePatternSave(p)}
             >
@@ -225,16 +251,85 @@ function TapEditForm({
         </div>
       )}
 
-      {mode === 'time' && (
-        <button
-          type="button"
-          disabled={saving || !startInput || !endInput}
-          className="w-full rounded-md bg-slate-700 py-2 text-sm text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-          onClick={handleTimeSave}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          {modal.shiftId ? (
+            <button
+              type="button"
+              className={deleteFooterClass}
+              disabled={saving || isDeleting}
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              削除
+            </button>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            className={secondaryFooterClass}
+            disabled={saving || isDeleting}
+            onClick={onClose}
+          >
+            キャンセル
+          </button>
+          {mode === 'time' ? (
+            <button
+              type="button"
+              disabled={saving || isDeleting || !startInput || !endInput}
+              className="rounded-md bg-slate-700 px-4 py-2 text-sm text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => void handleTimeSave()}
+            >
+              {saving ? '保存中...' : '保存'}
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {showDeleteConfirm ? (
+        <div
+          className="fixed inset-0 z-[210] flex items-start justify-center bg-black/40 pt-40"
+          role="dialog"
+          aria-modal
+          aria-labelledby="tap-delete-confirm-title"
+          onClick={() => {
+            if (!isDeleting) setShowDeleteConfirm(false)
+          }}
         >
-          {saving ? '保存中...' : '保存'}
-        </button>
-      )}
+          <div
+            className="mx-auto mt-0 w-80 rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="tap-delete-confirm-title"
+              className="font-medium text-zinc-900"
+            >
+              シフトを削除しますか？
+            </h3>
+            <p className="mt-1 text-sm text-zinc-500">
+              この操作は取り消せません。
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                className={`${secondaryFooterClass} transition-colors`}
+                disabled={isDeleting}
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                className="rounded-md bg-rose-600 px-4 py-2 text-sm text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isDeleting}
+                onClick={() => void handleConfirmDelete()}
+              >
+                {isDeleting ? '削除中...' : '削除する'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -247,6 +342,7 @@ export function ScheduleGantt({
   requestByStaff,
   patternsById,
   onSave,
+  onDelete,
 }: Props) {
   const gs = settings.gantt_start_minutes
   const ge = settings.gantt_end_minutes
@@ -639,6 +735,7 @@ export function ScheduleGantt({
                             workDate
                           )
                         : null,
+                      shiftId: existing?.shift_id ?? null,
                     })
                     return
                   }
@@ -695,6 +792,7 @@ export function ScheduleGantt({
                               workDate
                             )
                           : null,
+                        shiftId: existing?.shift_id ?? null,
                       })
                     }}
                     role="presentation"
@@ -762,13 +860,14 @@ export function ScheduleGantt({
           onClick={(e) => e.stopPropagation()}
         >
           <TapEditForm
-            key={`${tapModal.staffId}-${tapModal.initStartMin ?? 's'}-${tapModal.initEndMin ?? 'e'}`}
+            key={`${tapModal.staffId}-${tapModal.shiftId ?? 'new'}-${tapModal.initStartMin ?? 's'}-${tapModal.initEndMin ?? 'e'}`}
             modal={tapModal}
             patternsById={patternsById}
             ganttStart={settings.gantt_start_minutes}
             ganttEnd={settings.gantt_end_minutes}
             onSave={onSave}
             onClose={() => setTapModal(null)}
+            onDelete={onDelete}
           />
         </div>
       </div>

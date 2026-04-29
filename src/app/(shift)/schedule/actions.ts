@@ -62,6 +62,35 @@ export async function upsertShiftTimes(input: {
   return { ok: true }
 }
 
+export async function deleteShiftAction(
+  shiftId: string
+): Promise<{ error: string | null }> {
+  const session = await requireLeader()
+  if (!session) return { error: '権限がありません' }
+
+  const supabase = createServiceClient()
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from('shifts')
+    .select('shift_id')
+    .eq('shift_id', shiftId)
+    .eq('store_id', session.store_id)
+    .maybeSingle()
+
+  if (fetchErr) return { error: fetchErr.message }
+  if (!existing) return { error: 'シフトが見つかりません' }
+
+  const { error } = await supabase
+    .from('shifts')
+    .delete()
+    .eq('shift_id', shiftId)
+    .eq('store_id', session.store_id)
+
+  if (error) return { error: error.message }
+  revalidatePath('/schedule')
+  return { error: null }
+}
+
 export async function publishSchedulePeriod(input: {
   period_start: string
   period_end: string

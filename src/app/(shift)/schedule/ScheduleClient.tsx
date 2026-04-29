@@ -23,6 +23,7 @@ import {
 } from '@/app/(shift)/schedule/types'
 import {
   buildScheduleCsv,
+  deleteShiftAction,
   publishSchedulePeriod,
   saveShiftFromMinutes,
 } from '@/app/(shift)/schedule/actions'
@@ -244,6 +245,16 @@ export function ScheduleClient(init: Props) {
       alert(res.error)
       return
     }
+    router.refresh()
+  }
+
+  const handleDelete = async (shiftId: string) => {
+    const result = await deleteShiftAction(shiftId)
+    if (result.error) {
+      alert(result.error)
+      throw new Error(result.error)
+    }
+    setGanttWorkDate(null)
     router.refresh()
   }
 
@@ -640,6 +651,7 @@ export function ScheduleClient(init: Props) {
             requestByStaff={requestByStaffForGantt}
             patternsById={patternsById}
             onSave={onGanttSave}
+            onDelete={handleDelete}
           />
         ) : (
           role === 'leader' &&
