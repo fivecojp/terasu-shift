@@ -1,14 +1,18 @@
 import { redirect } from 'next/navigation'
 import { getSession, getSessionPayload } from '@/lib/auth'
 import {
+  addOneMonthFirst,
   buildRequestPathForSel,
   defaultPeriodSelForMonth,
   findFirstOpenPeriodInMonth,
+  isDeadlineExpiredVsToday,
+  listPeriodsWithDeadlines,
   listWeekSlicesInMonth,
   monthRangeInclusive,
   pairBiweeklySlices,
   parseYmd,
   resolveDefaultRequestMonthAndPeriod,
+  resolveGridForSelection,
   type PeriodSel,
   weekStartsOnFromSettings,
   ymParamToTargetFirst,
@@ -97,6 +101,56 @@ export default async function RequestPage({
     .slice(0, 10)
 
   if (!ymFromQuery) {
+    const ym0First = `${todayYmdJst.slice(0, 7)}-01`
+    const ym1First = addOneMonthFirst(ym0First)
+
+    type OpenPeriod = {
+      monthFirst: string
+      sel: PeriodSel
+      workDates: string[]
+    }
+    const openPeriods: OpenPeriod[] = []
+
+    for (const monthFirst of [ym0First, ym1First]) {
+      for (const p of listPeriodsWithDeadlines(monthFirst, settingsRow)) {
+        if (!isDeadlineExpiredVsToday(p.deadlineYmd, todayYmdJst)) {
+          const grid = resolveGridForSelection(monthFirst, settingsRow, p.sel)
+          openPeriods.push({ monthFirst, sel: p.sel, workDates: grid.workDates })
+        }
+      }
+    }
+
+    if (openPeriods.length > 0) {
+      const allDates = [...new Set(openPeriods.flatMap((p) => p.workDates))]
+
+      const submittedDateSet = new Set<string>()
+      if (allDates.length > 0) {
+        const { data: submitted } = await supabase
+          .from('shift_requests')
+          .select('work_date')
+          .eq('store_id', session.store_id)
+          .eq('staff_id', session.staff_id)
+          .in('work_date', allDates)
+        for (const r of submitted ?? []) {
+          if (r.work_date) submittedDateSet.add(r.work_date)
+        }
+      }
+
+      for (const p of openPeriods) {
+        const hasUnsubmitted = p.workDates.some((d) => !submittedDateSet.has(d))
+        if (hasUnsubmitted) {
+          redirect(
+            buildRequestPathForSel(p.monthFirst.slice(0, 7), p.sel)
+          )
+        }
+      }
+
+      const first = openPeriods[0]
+      redirect(
+        buildRequestPathForSel(first.monthFirst.slice(0, 7), first.sel)
+      )
+    }
+
     const resolved = resolveDefaultRequestMonthAndPeriod(settingsRow, todayYmdJst)
     redirect(
       buildRequestPathForSel(
