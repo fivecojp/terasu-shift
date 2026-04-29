@@ -91,7 +91,7 @@ export function ScheduleClient(init: Props) {
     scheduleViewKind,
   } = init
 
-  const [viewMode, setViewMode] = useState<'request' | 'shift'>('request')
+  const [viewMode, setViewMode] = useState<'request' | 'shift'>('shift')
   const [ganttWorkDate, setGanttWorkDate] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [isNavigating, setIsNavigating] = useState(false)

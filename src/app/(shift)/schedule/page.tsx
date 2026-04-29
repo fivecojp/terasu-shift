@@ -5,6 +5,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import {
   calcViewRange,
   parseScheduleViewKind,
+  type ScheduleViewKind,
   uniqueTargetMonthFirstsInRange,
 } from '@/lib/schedule-view-range'
 import {
@@ -36,10 +37,36 @@ export default async function SchedulePage({
   const storeCount = sessionPayload?.memberships.length ?? 0
 
   const sp = await searchParams
+
+  const ensuredSettings = await ensureShiftSettingsForStore(session.store_id)
+  if (!ensuredSettings.ok) {
+    return (
+      <div className="p-8 text-red-700">
+        シフト設定を初期化できませんでした: {ensuredSettings.error}
+      </div>
+    )
+  }
+  const shiftSettings = ensuredSettings.settings
+
+  const cycleToView: Record<
+    'weekly' | 'biweekly' | 'semimonthly' | 'monthly',
+    ScheduleViewKind
+  > = {
+    weekly: 'weekly',
+    biweekly: 'biweekly',
+    semimonthly: 'semimonthly',
+    monthly: 'monthly',
+  }
+
+  const rawView =
+    typeof sp.view === 'string' && sp.view.trim() !== ''
+      ? sp.view.trim()
+      : cycleToView[shiftSettings.shift_cycle] ?? 'semimonthly'
+
+  const scheduleViewKind = parseScheduleViewKind(rawView) ?? 'semimonthly'
+
   const targetMonthFromYm =
     ymParamToTargetFirst(sp.ym ?? null) ?? defaultTargetMonth()
-
-  const scheduleViewKind = parseScheduleViewKind(sp.view) ?? 'monthly'
 
   /** start 未指定時は月次のみ月初基準。週・半月などは今日を含む窓にする */
   const todayYmd = new Date().toLocaleDateString('sv-SE')
@@ -57,16 +84,6 @@ export default async function SchedulePage({
   const targetMonthFirst = firstOfMonthFromYmd(startStr)
   const ymQuery = startStr.slice(0, 7)
   const requestMonths = uniqueTargetMonthFirstsInRange(fetchStart, fetchEnd)
-
-  const ensured = await ensureShiftSettingsForStore(session.store_id)
-  if (!ensured.ok) {
-    return (
-      <div className="p-8 text-red-700">
-        シフト設定を初期化できませんでした: {ensured.error}
-      </div>
-    )
-  }
-  const shiftSettings = ensured.settings
 
   const supabase = createServiceClient()
 
