@@ -436,6 +436,17 @@ export function ScheduleGantt({
     return () => document.removeEventListener('mousedown', handler)
   }, [pcPatternPopover])
 
+  useEffect(() => {
+    if (pcPatternPopover) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [pcPatternPopover])
+
   const minuteFromClientX = useCallback(
     (staffId: string, clientX: number) => {
       const tel = tracks.current.get(staffId)
@@ -828,11 +839,24 @@ export function ScheduleGantt({
                   if (tg?.closest('[data-shift-bar]')) return
                   if (pcBarPointerMovedRef.current) return
                   if (shiftByStaff.has(s.staff_id)) return
+                  const POPOVER_W = 220
+                  const POPOVER_H = Math.min(
+                    activePatterns.length * 44 + 88,
+                    400
+                  )
+                  const x = Math.min(
+                    e.clientX,
+                    window.innerWidth - POPOVER_W - 8
+                  )
+                  const y = Math.min(
+                    e.clientY,
+                    window.innerHeight - POPOVER_H - 8
+                  )
                   setPcPatternPopover({
                     staffId: s.staff_id,
                     workDate,
-                    x: e.clientX,
-                    y: e.clientY,
+                    x,
+                    y,
                   })
                 }}
               >
@@ -948,7 +972,7 @@ export function ScheduleGantt({
     {pcPatternPopover && !isTouchDevice ? (
       <div
         ref={pcPatternPopoverRef}
-        className="fixed z-[150] bg-white rounded-lg border border-zinc-200 shadow-lg p-3 min-w-[12rem]"
+        className="fixed z-[150] bg-white rounded-lg border border-zinc-200 shadow-lg p-3 min-w-[12rem] max-h-[400px] overflow-y-auto"
         style={{ left: pcPatternPopover.x, top: pcPatternPopover.y }}
         role="dialog"
         aria-labelledby="pc-pattern-popover-title"
