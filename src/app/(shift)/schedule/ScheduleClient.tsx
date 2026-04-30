@@ -606,8 +606,12 @@ export function ScheduleClient(init: Props) {
   }
 
   async function onCsv() {
+    const fetchStart = columnDates[0] ?? viewStartYmd
+    const fetchEnd =
+      columnDates[columnDates.length - 1] ?? viewStartYmd
     const r = await buildScheduleCsv({
-      ym: ymQuery,
+      periodStart: fetchStart,
+      periodEnd: fetchEnd,
       attendance_location_code: settings.attendance_location_code ?? '',
     })
     if (!r.ok) {
@@ -619,7 +623,7 @@ export function ScheduleClient(init: Props) {
     })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `shift_${ymQuery}.csv`
+    a.download = `shift_${fetchStart}_${fetchEnd}.csv`
     a.click()
     URL.revokeObjectURL(a.href)
   }
