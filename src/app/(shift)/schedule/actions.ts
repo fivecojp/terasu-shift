@@ -98,22 +98,32 @@ export async function publishSchedulePeriod(input: {
   const session = await requireLeader()
   if (!session) return { ok: false, error: '権限がありません' }
 
+  const d = new Date(input.period_start + 'T00:00:00')
+  const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString(
+    'sv-SE'
+  )
+  const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0).toLocaleDateString(
+    'sv-SE'
+  )
+
   const supabase = createServiceClient()
   const nowIso = new Date().toISOString()
 
-  const { data: row } = await supabase
+  const { data: row, error: lookupErr } = await supabase
     .from('shift_publish_statuses')
     .select('publish_status_id, status')
     .eq('store_id', session.store_id)
-    .eq('period_start', input.period_start)
-    .eq('period_end', input.period_end)
+    .eq('period_start', monthStart)
+    .eq('period_end', monthEnd)
     .maybeSingle()
+
+  if (lookupErr) return { ok: false, error: lookupErr.message }
 
   if (!row) {
     const { error: insErr } = await supabase.from('shift_publish_statuses').insert({
       store_id: session.store_id,
-      period_start: input.period_start,
-      period_end: input.period_end,
+      period_start: monthStart,
+      period_end: monthEnd,
       status: 'published',
       published_at: nowIso,
       published_by_staff_id: session.staff_id,

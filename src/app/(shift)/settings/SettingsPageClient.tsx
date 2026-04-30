@@ -13,7 +13,6 @@ import {
 } from '@/app/(shift)/settings/actions'
 import { MinuteSelect } from '@/app/(shift)/settings/MinuteSelect'
 import { logoutAndRedirectToLogin } from '@/lib/logout-client'
-import { minutesToDisplay } from '@/lib/time'
 import type { ShiftPattern, ShiftSetting } from '@/types/database'
 
 export type PatternEdit = {
@@ -208,6 +207,13 @@ export function SettingsPageClient({
     router.refresh()
   }
 
+  async function saveAllPatterns() {
+    const n = patternEdits.length
+    for (let i = 0; i < n; i += 1) {
+      await savePatternRow(i)
+    }
+  }
+
   const scheduleHref = `/schedule?ym=${scheduleLinkYm}`
 
   const inputSelectClass =
@@ -261,120 +267,101 @@ export function SettingsPageClient({
           </h2>
           <p className="mb-4 text-sm text-zinc-500">
             削除は論理削除です（<code className="text-xs">is_active = false</code>
-            ）。保存は行ごとに実行します。
+            ）。変更の反映は一覧下の「すべて保存」から行います。
           </p>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 bg-zinc-50 text-left text-zinc-500">
-                  <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wider">
-                    パターン名
-                  </th>
-                  <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wider">
-                    開始
-                  </th>
-                  <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wider">
-                    終了
-                  </th>
-                  <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wider">
-                    表示順
-                  </th>
-                  <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wider">
-                    有効
-                  </th>
-                  <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wider">
-                    操作
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {patternEdits.map((r, ix) => (
-                  <tr key={r.clientKey} className="border-b border-zinc-100">
-                    <td className="p-2 align-middle">
-                      <input
-                        type="text"
-                        className={`min-w-[8rem] ${inputSelectClass}`}
-                        value={r.pattern_name}
-                        onChange={(e) =>
-                          updatePattern(ix, { pattern_name: e.target.value })
-                        }
-                      />
-                    </td>
-                    <td className="p-2 align-middle">
-                      <div className="flex flex-wrap items-center gap-1">
-                        <MinuteSelect
-                          className={minuteSelectClass}
-                          value={r.start_minutes}
-                          onChange={(m) => updatePattern(ix, { start_minutes: m })}
-                        />
-                        <span className="text-xs text-zinc-500">
-                          {minutesToDisplay(r.start_minutes)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-2 align-middle">
-                      <div className="flex flex-wrap items-center gap-1">
-                        <MinuteSelect
-                          className={minuteSelectClass}
-                          value={r.end_minutes}
-                          onChange={(m) => updatePattern(ix, { end_minutes: m })}
-                        />
-                        <span className="text-xs text-zinc-500">
-                          {minutesToDisplay(r.end_minutes)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-2 align-middle">
-                      <input
-                        type="number"
-                        min={0}
-                        className="w-20 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                        value={r.display_order}
-                        onChange={(e) =>
-                          updatePattern(ix, {
-                            display_order: Number(e.target.value) || 0,
-                          })
-                        }
-                      />
-                    </td>
-                    <td className="p-2 align-middle">
+          <div className="space-y-4">
+            {patternEdits.map((r, ix) => (
+              <div
+                key={r.clientKey}
+                className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm"
+              >
+                <div className="flex flex-wrap items-center gap-3 gap-y-2">
+                  <input
+                    type="text"
+                    className={`min-w-0 flex-1 basis-[12rem] ${inputSelectClass}`}
+                    value={r.pattern_name}
+                    onChange={(e) =>
+                      updatePattern(ix, { pattern_name: e.target.value })
+                    }
+                  />
+                  <label className="inline-flex shrink-0 cursor-pointer items-center gap-2">
+                    <span className="relative inline-flex h-7 w-12 shrink-0 items-center">
                       <input
                         type="checkbox"
+                        role="switch"
+                        aria-checked={r.is_active}
+                        className="peer sr-only"
                         checked={r.is_active}
                         onChange={(e) =>
                           updatePattern(ix, { is_active: e.target.checked })
                         }
                       />
-                    </td>
-                    <td className="p-2 align-middle">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                          onClick={() => void savePatternRow(ix)}
-                        >
-                          保存
-                        </button>
-                        <button
-                          type="button"
-                          className="text-xs text-rose-500 hover:underline"
-                          onClick={() => void removePatternRow(ix)}
-                        >
-                          削除
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <span
+                        className="pointer-events-none absolute inset-0 rounded-full bg-zinc-300 transition peer-checked:bg-emerald-600 peer-focus-visible:ring-2 peer-focus-visible:ring-slate-400"
+                        aria-hidden
+                      />
+                      <span
+                        className="pointer-events-none absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"
+                        aria-hidden
+                      />
+                    </span>
+                    <span className="text-xs font-medium text-zinc-700">
+                      {r.is_active ? '有効' : '無効'}
+                    </span>
+                  </label>
+                  <label className="flex shrink-0 items-center gap-1.5 text-xs text-zinc-500">
+                    <span className="whitespace-nowrap">並び順</span>
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-14 rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-xs text-zinc-800 tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-400"
+                      value={r.display_order}
+                      onChange={(e) =>
+                        updatePattern(ix, {
+                          display_order: Number(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <MinuteSelect
+                    className={`min-h-10 w-auto min-w-[7rem] ${inlineSelectClass}`}
+                    value={r.start_minutes}
+                    onChange={(m) => updatePattern(ix, { start_minutes: m })}
+                  />
+                  <span className="shrink-0 text-sm text-zinc-400">〜</span>
+                  <MinuteSelect
+                    className={`min-h-10 w-auto min-w-[7rem] ${inlineSelectClass}`}
+                    value={r.end_minutes}
+                    onChange={(m) => updatePattern(ix, { end_minutes: m })}
+                  />
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    className="rounded-md border border-rose-300 px-3 py-1.5 text-sm text-rose-600 hover:bg-rose-50"
+                    onClick={() => void removePatternRow(ix)}
+                  >
+                    削除
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
           <button
             type="button"
-            className="mt-4 rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+            className="mt-4 rounded-md bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
             onClick={addPatternRow}
           >
             ＋ パターンを追加
+          </button>
+          <button
+            type="button"
+            className="mt-3 w-full rounded-md bg-slate-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 sm:w-auto"
+            onClick={() => void saveAllPatterns()}
+          >
+            すべて保存
           </button>
         </section>
 

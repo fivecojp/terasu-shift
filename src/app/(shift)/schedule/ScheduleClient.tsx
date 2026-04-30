@@ -499,10 +499,13 @@ export function ScheduleClient(init: Props) {
   const periodEnd = columnDates[columnDates.length - 1]
 
   const publishForRange = useMemo(() => {
-    return publishRows.find(
-      (p) =>
-        p.period_start === periodStart && p.period_end === periodEnd
+    if (!periodStart || !periodEnd) return undefined
+    const overlapping = publishRows.filter(
+      (p) => p.period_start <= periodEnd && p.period_end >= periodStart
     )
+    const published = overlapping.find((p) => p.status === 'published')
+    if (published) return published
+    return overlapping[0]
   }, [periodEnd, periodStart, publishRows])
 
   /** 対象月に希望が1件でもある staff_id（page 取得の staff は visible・退職日なしのみ） */

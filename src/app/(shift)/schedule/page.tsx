@@ -192,6 +192,37 @@ export default async function SchedulePage({
       allRequestsQuery,
     ])
 
+  if (shiftsRes.error) {
+    return (
+      <div className="p-8 text-red-700">
+        シフトの取得に失敗しました: {shiftsRes.error.message}
+      </div>
+    )
+  }
+  if (publishRes.error) {
+    return (
+      <div className="p-8 text-red-700">
+        公開状態の取得に失敗しました: {publishRes.error.message}
+      </div>
+    )
+  }
+
+  const rawShifts = (shiftsRes.data ?? []) as ShiftRow[]
+  const publishRows = (publishRes.data ?? []) as ShiftPublishStatus[]
+
+  const filteredShifts: ShiftRow[] =
+    session.role === 'general'
+      ? rawShifts.filter((shift) =>
+          publishRows.some(
+            (pub) =>
+              pub.store_id === shift.store_id &&
+              pub.status === 'published' &&
+              pub.period_start <= shift.work_date &&
+              pub.period_end >= shift.work_date
+          )
+        )
+      : rawShifts
+
   const allRequests = (allRequestsRes.data ?? []) as RequestSummary[]
 
   const showRequestsToGeneral = shiftSettings.show_requests_to_general
@@ -207,11 +238,11 @@ export default async function SchedulePage({
       staff={staff}
       settings={shiftSettings}
       patterns={(patternsRes.data ?? []) as ShiftPattern[]}
-      shifts={(shiftsRes.data ?? []) as ShiftRow[]}
+      shifts={filteredShifts}
       requests={(requestsRes.data ?? []) as ShiftRequest[]}
       allRequests={allRequestsForClient}
       showRequestsToGeneral={showRequestsToGeneral}
-      publishRows={(publishRes.data ?? []) as ShiftPublishStatus[]}
+      publishRows={publishRows}
       holidays={holidaysRes.data ?? []}
       targetMonthFirst={targetMonthFirst}
       ymQuery={ymQuery}
