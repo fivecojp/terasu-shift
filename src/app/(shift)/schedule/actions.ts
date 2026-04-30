@@ -1,10 +1,16 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import Encoding from 'encoding-japanese'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getSession } from '@/lib/auth'
-import { formatJstHHmm, workDateMinutesToIso } from '@/lib/jst-shift-time'
+import {
+  isoToMinutesFromWorkDateMidnight,
+  workDateMinutesToIso,
+} from '@/lib/jst-shift-time'
 import { ymParamToTargetFirst } from '@/lib/shift-request-periods'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 仕様準拠の import（CSV 時刻は formatCsvTime で算出）
+import { minutesToDisplay } from '@/lib/time'
 
 async function requireLeader() {
   const session = await getSession()
@@ -180,7 +186,19 @@ export async function ensureDraftPublishRow(input: {
 
 export async function buildScheduleCsv(input: {
   ym: string
-}): Promise<{ ok: true; csv: string } | { ok: false; error: string }> {
+  attendance_location_code: string
+}): Promise<
+  | { ok: true; csv: string; buffer: number[]; encoding: 'sjis' }
+  | { ok: false; error: string }
+> {
+  function formatCsvTime(minutes: number): string {
+    const prefix = minutes >= 1440 ? '翌日 ' : '当日 '
+    const actualMinutes = minutes >= 1440 ? minutes - 1440 : minutes
+    const h = Math.floor(actualMinutes / 60).toString().padStart(2, '0')
+    const m = (actualMinutes % 60).toString().padStart(2, '0')
+    return `${prefix}${h}:${m}`
+  }
+
   const session = await requireLeader()
   if (!session) return { ok: false, error: '権限がありません' }
 
@@ -188,6 +206,11 @@ export async function buildScheduleCsv(input: {
     ymParamToTargetFirst(input.ym) ??
     (/^\d{4}-\d{2}$/.test(input.ym) ? `${input.ym}-01` : null)
   if (!monthFirst) return { ok: false, error: '無効な年月です' }
+
+  const attendanceOut =
+    input.attendance_location_code.trim() === ''
+      ? ''
+      : input.attendance_location_code.trim()
 
   const supabase = createServiceClient()
   const d = new Date(monthFirst + 'T12:00:00')
@@ -201,7 +224,7 @@ export async function buildScheduleCsv(input: {
   const { data: shifts, error } = await supabase
     .from('shifts')
     .select(
-      'work_date, staff_id, shift_pattern_name, scheduled_start_at, scheduled_end_at'
+      'work_date, staff_id, shift_pattern_id, scheduled_start_at, scheduled_end_at'
     )
     .eq('store_id', session.store_id)
     .gte('work_date', startYmd)
@@ -212,10 +235,11 @@ export async function buildScheduleCsv(input: {
   const staffIds = [...new Set((shifts ?? []).map((x) => x.staff_id))]
   const snMap = new Map<string, number>()
   if (staffIds.length) {
-    const { data: staffRows } = await supabase
+    const { data: staffRows, error: staffErr } = await supabase
       .from('staffs')
       .select('staff_id, staff_number')
       .in('staff_id', staffIds)
+    if (staffErr) return { ok: false, error: staffErr.message }
     for (const r of staffRows ?? []) {
       snMap.set(r.staff_id, r.staff_number)
     }
@@ -224,16 +248,56 @@ export async function buildScheduleCsv(input: {
   const header =
     '#従業員コード,勤務日,パターンコード,出勤予定,退勤予定,出勤所属コード'
   const lines = [header]
-  for (const s of shifts ?? []) {
-    const num = snMap.get(s.staff_id) ?? ''
-    const pat = s.shift_pattern_name ?? ''
-    const start = formatJstHHmm(s.scheduled_start_at as string)
-    const end = formatJstHHmm(s.scheduled_end_at as string)
-    lines.push(`#${num},${s.work_date},${pat},${start},${end},${session.store_id}`)
+  type ShiftCsvRow = {
+    work_date: string
+    staff_id: string
+    shift_pattern_id: string | null
+    scheduled_start_at: string
+    scheduled_end_at: string | null
+  }
+  for (const raw of shifts ?? []) {
+    const s = raw as ShiftCsvRow
+    if (s.shift_pattern_id == null) continue
+    if (s.scheduled_end_at == null || String(s.scheduled_end_at).trim() === '') {
+      continue
+    }
+
+    const num = snMap.get(s.staff_id)
+    const empCode =
+      typeof num === 'number' ? String(Math.floor(num)) : ''
+    const pat = s.shift_pattern_id
+    const startMin = isoToMinutesFromWorkDateMidnight(
+      s.scheduled_start_at,
+      s.work_date
+    )
+    const endMin = isoToMinutesFromWorkDateMidnight(
+      s.scheduled_end_at as string,
+      s.work_date
+    )
+    const startTs = formatCsvTime(startMin)
+    const endTs = formatCsvTime(endMin)
+
+    lines.push(
+      `${empCode},${s.work_date},${pat},${startTs},${endTs},${attendanceOut}`
+    )
   }
   lines.push('')
 
-  return { ok: true, csv: lines.join('\n') }
+  const csvString = lines.join('\n')
+  const sjisConverted = Encoding.convert(csvString, {
+    to: 'SJIS',
+    from: 'UNICODE',
+    type: 'array',
+  })
+  const sjisArrayRaw = sjisConverted as Iterable<number>
+  const sjisArray = Array.from(sjisArrayRaw)
+
+  return {
+    ok: true,
+    csv: csvString,
+    buffer: Array.from(sjisArray),
+    encoding: 'sjis',
+  }
 }
 
 export async function saveShiftFromMinutes(input: {

@@ -62,6 +62,7 @@ export function SettingsPageClient({
     week_start_day: initialSettings.week_start_day,
     deadline_type: initialSettings.deadline_type,
     deadline_value: initialSettings.deadline_value,
+    attendance_location_code: initialSettings.attendance_location_code ?? '',
   })
 
   const [patternEdits, setPatternEdits] = useState<PatternEdit[]>(() =>
@@ -76,6 +77,15 @@ export function SettingsPageClient({
   useEffect(() => {
     setShowRequestsToGeneral(showRequestsToGeneralProp)
   }, [showRequestsToGeneralProp])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- サーバー再取得後の attendance_location_code をフォームへ反映
+    setSett((prev) => ({
+      ...prev,
+      attendance_location_code:
+        initialSettings.attendance_location_code ?? '',
+    }))
+  }, [initialSettings.attendance_location_code])
 
   useEffect(() => {
     setPatternEdits(fromPatterns(patterns))
@@ -100,6 +110,12 @@ export function SettingsPageClient({
       deadline_value: Math.max(1, Math.floor(Number(sett.deadline_value)) || 1),
       csv_format_type: initialSettings.csv_format_type,
       show_requests_to_general: showRequestsToGeneral,
+      attendance_location_code: (() => {
+        const trimmed = sett.attendance_location_code.trim()
+        if (trimmed === '') return null
+        const only = trimmed.replace(/[^A-Za-z0-9]/g, '').slice(0, 30)
+        return only === '' ? null : only
+      })(),
     })
     if (!res.ok) {
       alert(res.error)
@@ -496,6 +512,35 @@ export function SettingsPageClient({
             </button>
           </div>
         </form>
+
+        <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">
+            出勤所属コード
+          </h2>
+          <p className="mb-3 text-sm text-zinc-600">CSV出力時の出勤所属コード列に使用されます。</p>
+          <label className="block text-sm font-medium text-zinc-800">
+            コード
+            <input
+              type="text"
+              maxLength={30}
+              pattern="[A-Za-z0-9]*"
+              placeholder="例: OKBAR01"
+              className={`mt-1 max-w-xs ${inputSelectClass}`}
+              value={sett.attendance_location_code}
+              onChange={(e) =>
+                setSett((s) => ({
+                  ...s,
+                  attendance_location_code: e.target.value
+                    .replace(/[^A-Za-z0-9]/g, '')
+                    .slice(0, 30),
+                }))
+              }
+            />
+          </label>
+          <p className="mt-2 text-xs text-zinc-500">
+            ※英数字30文字以内です。表示・サイクル・締切の保存ボタンで一緒に保存されます。
+          </p>
+        </section>
 
         <section className="mb-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">

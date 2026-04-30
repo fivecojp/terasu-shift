@@ -606,12 +606,17 @@ export function ScheduleClient(init: Props) {
   }
 
   async function onCsv() {
-    const r = await buildScheduleCsv({ ym: ymQuery })
+    const r = await buildScheduleCsv({
+      ym: ymQuery,
+      attendance_location_code: settings.attendance_location_code ?? '',
+    })
     if (!r.ok) {
       alert(r.error)
       return
     }
-    const blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8' })
+    const blob = new Blob([new Uint8Array(r.buffer)], {
+      type: 'application/octet-stream',
+    })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
     a.download = `shift_${ymQuery}.csv`

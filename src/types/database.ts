@@ -43,6 +43,7 @@ export type ShiftSetting = {
   deadline_value: number
   csv_format_type: string | null
   show_requests_to_general: boolean
+  attendance_location_code: string | null
   updated_at: string
 }
 

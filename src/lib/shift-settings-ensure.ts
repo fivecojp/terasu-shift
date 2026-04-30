@@ -14,6 +14,7 @@ export const SHIFT_SETTINGS_DEFAULTS: Omit<
   deadline_value: 7,
   csv_format_type: null,
   show_requests_to_general: true,
+  attendance_location_code: null,
 }
 
 /**
