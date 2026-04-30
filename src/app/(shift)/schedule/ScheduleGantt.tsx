@@ -402,11 +402,39 @@ export function ScheduleGantt({
 
   const [tapModal, setTapModal] = useState<TapEditModal | null>(null)
 
+  const [pcPatternPopover, setPcPatternPopover] = useState<{
+    staffId: string
+    workDate: string
+    x: number
+    y: number
+  } | null>(null)
+  const pcPatternPopoverRef = useRef<HTMLDivElement | null>(null)
+
+  const activePatterns = useMemo(
+    () => Array.from(patternsById.values()).filter((p) => p.is_active),
+    [patternsById]
+  )
+
   const [pcDeleteTarget, setPcDeleteTarget] = useState<{
     shiftId: string
     staffName: string
   } | null>(null)
   const [isPcDeleting, setIsPcDeleting] = useState(false)
+
+  useEffect(() => {
+    setPcPatternPopover(null)
+  }, [workDate])
+
+  useEffect(() => {
+    if (!pcPatternPopover) return
+    const handler = (ev: MouseEvent) => {
+      const root = pcPatternPopoverRef.current
+      if (root?.contains(ev.target as Node)) return
+      setPcPatternPopover(null)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [pcPatternPopover])
 
   const minuteFromClientX = useCallback(
     (staffId: string, clientX: number) => {
@@ -651,27 +679,6 @@ export function ScheduleGantt({
     document.addEventListener('mouseup', onUp)
   }
 
-  const clickEmpty = (staffId: string, e: React.MouseEvent<HTMLDivElement>) => {
-    if (shiftByStaff.has(staffId)) return
-    if (e.target !== e.currentTarget) return
-    const el = tracks.current.get(staffId)
-    if (!el) return
-    const r = el.getBoundingClientRect()
-    const mid = gs + ((e.clientX - r.left) / r.width) * span
-    const ns = snapMinutes(mid - 90, 30)
-    const ne = Math.min(ge, ns + 180)
-    if (ne > ns && ne - ns >= MIN_DURATION_MIN) {
-      setCommitted((m) => new Map(m).set(staffId, { s: ns, e: ne }))
-      void onSave(staffId, ns, ne).finally(() => {
-        setCommitted((m) => {
-          const n = new Map(m)
-          n.delete(staffId)
-          return n
-        })
-      })
-    }
-  }
-
   async function handlePcDeleteConfirm() {
     const t = pcDeleteTarget
     if (!t) return
@@ -686,6 +693,13 @@ export function ScheduleGantt({
     }
   }
 
+  async function handlePcPatternPick(pattern: ShiftPattern) {
+    const pop = pcPatternPopover
+    if (!pop) return
+    await onSave(pop.staffId, pattern.start_minutes, pattern.end_minutes)
+    setPcPatternPopover(null)
+  }
+
   return (
     <>
     <div className="mt-6 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
@@ -693,7 +707,7 @@ export function ScheduleGantt({
         <h2 className="text-sm font-semibold text-zinc-900">タイムライン</h2>
         <span className="text-xs text-zinc-400">{workDate}</span>
         <span className="text-xs text-zinc-400 hidden sm:inline">
-          確定シフト: ドラッグで移動・端でリサイズ　未登録: クリックで仮登録
+          確定シフト: ドラッグで移動・端でリサイズ　未登録: クリックでパターン登録
         </span>
       </div>
       <div className="px-4 py-2">
@@ -781,6 +795,12 @@ export function ScheduleGantt({
                 ref={(el) => setTrack(s.staff_id, el)}
                 role="presentation"
                 className="relative h-10 cursor-default bg-white"
+                onMouseDown={(e) => {
+                  if (isTouchDevice) return
+                  const t = e.target as HTMLElement | null
+                  if (t?.closest('[data-shift-bar]')) return
+                  pcBarPointerMovedRef.current = false
+                }}
                 onClick={(e) => {
                   if (isTouchDevice) {
                     e.stopPropagation()
@@ -804,7 +824,16 @@ export function ScheduleGantt({
                     })
                     return
                   }
-                  clickEmpty(s.staff_id, e)
+                  const tg = e.target as HTMLElement | null
+                  if (tg?.closest('[data-shift-bar]')) return
+                  if (pcBarPointerMovedRef.current) return
+                  if (shiftByStaff.has(s.staff_id)) return
+                  setPcPatternPopover({
+                    staffId: s.staff_id,
+                    workDate,
+                    x: e.clientX,
+                    y: e.clientY,
+                  })
                 }}
               >
                 {hourTicks.map((tick) => (
@@ -833,6 +862,7 @@ export function ScheduleGantt({
 
                 {showShiftBar ? (
                   <div
+                    data-shift-bar
                     className={`absolute top-1 bottom-1 flex overflow-hidden rounded ${barBg}`}
                     style={{
                       left: `${leftPct}%`,
@@ -914,6 +944,47 @@ export function ScheduleGantt({
         })}
       </div>
     </div>
+
+    {pcPatternPopover && !isTouchDevice ? (
+      <div
+        ref={pcPatternPopoverRef}
+        className="fixed z-[150] bg-white rounded-lg border border-zinc-200 shadow-lg p-3 min-w-[12rem]"
+        style={{ left: pcPatternPopover.x, top: pcPatternPopover.y }}
+        role="dialog"
+        aria-labelledby="pc-pattern-popover-title"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div
+          id="pc-pattern-popover-title"
+          className="mb-2 text-xs font-medium text-zinc-500"
+        >
+          パターンを選択
+        </div>
+        {activePatterns.length === 0 ? (
+          <p className="text-sm text-zinc-600">パターンが登録されていません</p>
+        ) : (
+          <div className="flex flex-col gap-0.5">
+            {activePatterns.map((p) => (
+              <button
+                key={p.shift_pattern_id}
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 rounded-md"
+                onClick={() => void handlePcPatternPick(p)}
+              >
+                {p.pattern_name}
+              </button>
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          className="w-full text-left px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-50 rounded-md border-t border-zinc-100 mt-1"
+          onClick={() => setPcPatternPopover(null)}
+        >
+          キャンセル
+        </button>
+      </div>
+    ) : null}
 
     {tapModal && isTouchDevice && (
       <div
