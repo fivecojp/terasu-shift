@@ -797,7 +797,7 @@ export function ScheduleGantt({
           return (
             <div
               key={s.staff_id}
-              className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-center gap-2 border-b border-zinc-100 py-0 last:border-b-0"
+              className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-center gap-x-2 border-b border-zinc-100 py-0 last:border-b-0"
             >
               <div className="truncate text-sm font-medium text-zinc-900 flex items-center">
                 {s.staff_name}
