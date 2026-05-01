@@ -799,13 +799,13 @@ export function ScheduleGantt({
               key={s.staff_id}
               className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-center gap-x-2 border-b border-zinc-100 py-0 last:border-b-0"
             >
-              <div className="truncate text-sm font-medium text-zinc-900 flex items-center">
+              <div className="truncate text-sm font-medium text-zinc-900 flex items-center leading-none mb-0">
                 {s.staff_name}
               </div>
               <div
                 ref={(el) => setTrack(s.staff_id, el)}
                 role="presentation"
-                className="relative h-10 cursor-default bg-white"
+                className="relative h-7 cursor-default bg-white"
                 onMouseDown={(e) => {
                   if (isTouchDevice) return
                   const t = e.target as HTMLElement | null
