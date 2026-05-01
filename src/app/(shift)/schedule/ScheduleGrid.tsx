@@ -505,7 +505,7 @@ export function ScheduleGrid({
           <tbody>
             <tr>
               <td
-                className="sticky left-0 z-10 whitespace-nowrap border-b border-r border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-500 shadow-[1px_0_0_0_#e4e4e7]"
+                className="sticky left-0 z-10 border-b border-r border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-500 shadow-[1px_0_0_0_#e4e4e7]"
                 style={{ willChange: 'transform' }}
               >
                 Memo
@@ -517,13 +517,13 @@ export function ScheduleGrid({
                 return (
                   <td
                     key={`memo_${d}`}
-                    className="border-b border-r border-zinc-100 px-1 py-0.5"
+                    className="border-b border-r border-zinc-100 px-1 py-2 text-center align-middle"
                   >
                     {role === 'leader' ? (
-                      <input
-                        type="text"
-                        className="w-full rounded border-0 bg-transparent px-0.5 py-0.5 text-xs text-zinc-700 outline-none focus:bg-zinc-50 focus:ring-1 focus:ring-slate-300 placeholder:text-zinc-300"
+                      <textarea
+                        className="w-full resize-none rounded border-0 bg-transparent px-0.5 py-0.5 text-center text-xs text-zinc-700 outline-none focus:bg-zinc-50 focus:ring-1 focus:ring-slate-300 placeholder:text-zinc-300"
                         placeholder="…"
+                        rows={2}
                         value={displayText}
                         onChange={(e) => {
                           const val = e.target.value
@@ -558,7 +558,7 @@ export function ScheduleGrid({
                         }}
                       />
                     ) : (
-                      <span className="block px-0.5 text-xs text-zinc-500">
+                      <span className="block whitespace-pre-wrap break-words px-0.5 text-center text-xs text-zinc-500">
                         {savedText}
                       </span>
                     )}
