@@ -805,7 +805,7 @@ export function ScheduleGantt({
               <div
                 ref={(el) => setTrack(s.staff_id, el)}
                 role="presentation"
-                className="relative h-7 cursor-default bg-white"
+                className="relative h-9 cursor-default bg-white"
                 onMouseDown={(e) => {
                   if (isTouchDevice) return
                   const t = e.target as HTMLElement | null
