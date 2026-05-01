@@ -423,3 +423,23 @@ export async function upsertScheduleMemoAction(data: {
   if (error) return { error: error.message }
   return {}
 }
+
+export async function unpublishSchedulePeriod(data: {
+  period_start: string
+  period_end: string
+  store_id: string
+}): Promise<{ ok: boolean; error?: string }> {
+  const supabase = createServiceClient()
+  const { error } = await supabase
+    .from('shift_publish_statuses')
+    .update({
+      status: 'draft',
+      published_at: null,
+      published_by_staff_id: null,
+    })
+    .eq('store_id', data.store_id)
+    .eq('period_start', data.period_start)
+    .eq('period_end', data.period_end)
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}

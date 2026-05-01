@@ -29,6 +29,7 @@ import {
   deleteShiftRequestAction,
   publishSchedulePeriod,
   saveShiftFromMinutes,
+  unpublishSchedulePeriod,
   upsertShiftRequestAction,
 } from '@/app/(shift)/schedule/actions'
 import {
@@ -607,6 +608,24 @@ export function ScheduleClient(init: Props) {
     router.refresh()
   }
 
+  async function onUnpublish() {
+    if (!periodStart || !periodEnd || !publishForRange) return
+    if (
+      !confirm('公開を取り消しますか？スタッフからシフトが見えなくなります。')
+    )
+      return
+    const r = await unpublishSchedulePeriod({
+      period_start: publishForRange.period_start,
+      period_end: publishForRange.period_end,
+      store_id: session.store_id,
+    })
+    if (!r.ok) {
+      alert(r.error)
+      return
+    }
+    router.refresh()
+  }
+
   async function onCsv() {
     const fetchStart = columnDates[0] ?? viewStartYmd
     const fetchEnd =
@@ -669,6 +688,10 @@ export function ScheduleClient(init: Props) {
   const staffName = session.staff_name
   const publishStatus =
     publishForRange?.status === 'published' ? 'published' : 'draft'
+  const canUnpublish =
+    publishStatus === 'published' &&
+    periodStart !== undefined &&
+    periodStart > todayYmdJst
   const publishLabelPc =
     publishStatus === 'published'
       ? `公開済み${publishForRange?.published_at ? `（${publishForRange.published_at.slice(0, 10)}）` : ''}`
@@ -785,6 +808,14 @@ export function ScheduleClient(init: Props) {
                     onClick={() => void onPublish()}
                   >
                     公開する
+                  </button>
+                ) : canUnpublish ? (
+                  <button
+                    type="button"
+                    className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+                    onClick={() => void onUnpublish()}
+                  >
+                    公開取消
                   </button>
                 ) : null}
                 <button
