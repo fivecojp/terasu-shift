@@ -801,22 +801,24 @@ export function ScheduleClient(init: Props) {
                 >
                   {publishLabelPc}
                 </span>
-                {publishStatus === 'draft' ? (
-                  <button
-                    type="button"
-                    className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
-                    onClick={() => void onPublish()}
-                  >
-                    公開する
-                  </button>
-                ) : canUnpublish ? (
-                  <button
-                    type="button"
-                    className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
-                    onClick={() => void onUnpublish()}
-                  >
-                    公開取消
-                  </button>
+                {scheduleViewKind === 'semimonthly' ? (
+                  publishStatus === 'draft' ? (
+                    <button
+                      type="button"
+                      className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+                      onClick={() => void onPublish()}
+                    >
+                      公開する
+                    </button>
+                  ) : canUnpublish ? (
+                    <button
+                      type="button"
+                      className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+                      onClick={() => void onUnpublish()}
+                    >
+                      公開取消
+                    </button>
+                  ) : null
                 ) : null}
                 <button
                   type="button"
@@ -1001,33 +1003,39 @@ export function ScheduleClient(init: Props) {
               </Link>
               {role === 'leader' ? (
                 <>
-                  {publishStatus === 'draft' ? (
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-zinc-50 transition-colors"
-                      onClick={() => void onPublish()}
-                    >
-                      公開する
-                    </button>
-                  ) : (
-                    <>
-                      <div className="px-4 py-2.5 text-sm font-medium text-emerald-600">
-                        {publishLabelPc}
-                      </div>
-                      {canUnpublish ? (
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
-                          onClick={() => {
-                            setMenuOpen(false)
-                            void onUnpublish()
-                          }}
-                        >
-                          公開取消
-                        </button>
-                      ) : null}
-                    </>
-                  )}
+                  {scheduleViewKind === 'semimonthly' ? (
+                    publishStatus === 'draft' ? (
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-zinc-700 hover:bg-zinc-50 transition-colors"
+                        onClick={() => void onPublish()}
+                      >
+                        公開する
+                      </button>
+                    ) : (
+                      <>
+                        <div className="px-4 py-2.5 text-sm font-medium text-emerald-600">
+                          {publishLabelPc}
+                        </div>
+                        {canUnpublish ? (
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+                            onClick={() => {
+                              setMenuOpen(false)
+                              void onUnpublish()
+                            }}
+                          >
+                            公開取消
+                          </button>
+                        ) : null}
+                      </>
+                    )
+                  ) : publishStatus === 'published' ? (
+                    <div className="px-4 py-2.5 text-sm font-medium text-emerald-600">
+                      {publishLabelPc}
+                    </div>
+                  ) : null}
                   <Link
                     href="/settings"
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors"

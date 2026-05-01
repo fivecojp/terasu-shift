@@ -104,12 +104,16 @@ export async function publishSchedulePeriod(input: {
   if (!session) return { ok: false, error: '権限がありません' }
 
   const d = new Date(input.period_start + 'T00:00:00')
-  const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString(
-    'sv-SE'
-  )
-  const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0).toLocaleDateString(
-    'sv-SE'
-  )
+  const day = d.getDate()
+  const isFirstHalf = day <= 15
+  const halfStart = isFirstHalf
+    ? new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString('sv-SE')
+    : new Date(d.getFullYear(), d.getMonth(), 16).toLocaleDateString('sv-SE')
+  const halfEnd = isFirstHalf
+    ? new Date(d.getFullYear(), d.getMonth(), 15).toLocaleDateString('sv-SE')
+    : new Date(d.getFullYear(), d.getMonth() + 1, 0).toLocaleDateString(
+        'sv-SE'
+      )
 
   const supabase = createServiceClient()
   const nowIso = new Date().toISOString()
@@ -118,8 +122,8 @@ export async function publishSchedulePeriod(input: {
     .from('shift_publish_statuses')
     .select('publish_status_id, status')
     .eq('store_id', session.store_id)
-    .eq('period_start', monthStart)
-    .eq('period_end', monthEnd)
+    .eq('period_start', halfStart)
+    .eq('period_end', halfEnd)
     .maybeSingle()
 
   if (lookupErr) return { ok: false, error: lookupErr.message }
@@ -127,8 +131,8 @@ export async function publishSchedulePeriod(input: {
   if (!row) {
     const { error: insErr } = await supabase.from('shift_publish_statuses').insert({
       store_id: session.store_id,
-      period_start: monthStart,
-      period_end: monthEnd,
+      period_start: halfStart,
+      period_end: halfEnd,
       status: 'published',
       published_at: nowIso,
       published_by_staff_id: session.staff_id,
