@@ -716,7 +716,7 @@ export function ScheduleGantt({
     <div className="mt-6 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
       <div className="flex items-center gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-2">
         <h2 className="text-sm font-semibold text-zinc-900">タイムライン</h2>
-        <span className="text-xs text-zinc-400">{workDate}</span>
+        <span className="text-sm font-semibold text-zinc-800">{workDate}</span>
         <span className="text-xs text-zinc-400 hidden sm:inline">
           確定シフト: ドラッグで移動・端でリサイズ　未登録: クリックでパターン登録
         </span>
@@ -728,7 +728,7 @@ export function ScheduleGantt({
             {hourTicks.map((tick) => (
               <span
                 key={tick.minutes}
-                className="absolute top-0 -translate-x-1/2 text-[10px] text-zinc-400 select-none"
+                className="absolute top-0 -translate-x-1/2 text-[10px] text-zinc-600 select-none"
                 style={{ left: tick.left }}
               >
                 {tick.label}
@@ -797,7 +797,7 @@ export function ScheduleGantt({
           return (
             <div
               key={s.staff_id}
-              className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-center gap-2 border-b border-zinc-100 py-1.5 last:border-b-0"
+              className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-center gap-2 border-b border-zinc-100 py-0.5 last:border-b-0"
             >
               <div className="truncate text-sm font-medium text-zinc-900">
                 {s.staff_name}
@@ -805,7 +805,7 @@ export function ScheduleGantt({
               <div
                 ref={(el) => setTrack(s.staff_id, el)}
                 role="presentation"
-                className="relative h-10 cursor-default bg-white"
+                className="relative h-8 cursor-default bg-white"
                 onMouseDown={(e) => {
                   if (isTouchDevice) return
                   const t = e.target as HTMLElement | null
@@ -929,7 +929,7 @@ export function ScheduleGantt({
                       title="開始を変更"
                     />
                     <div
-                      className={`flex min-w-[20px] flex-1 cursor-grab items-center justify-center overflow-hidden px-0.5 text-center text-[10px] font-medium leading-tight whitespace-nowrap active:cursor-grabbing ${barBg} ${barText}`}
+                      className={`flex min-w-[20px] flex-1 cursor-grab items-center justify-center overflow-hidden px-0.5 text-center text-xs font-medium leading-tight whitespace-nowrap active:cursor-grabbing ${barBg} ${barText}`}
                       title={titleFull}
                       onMouseDown={(ev) =>
                         startMoveDrag(
