@@ -721,7 +721,7 @@ export function ScheduleGantt({
           確定シフト: ドラッグで移動・端でリサイズ　未登録: クリックでパターン登録
         </span>
       </div>
-      <div className="px-4 py-2">
+      <div className="px-4 pt-1 pb-0">
         <div className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-end gap-2">
           <div aria-hidden className="min-h-6" />
           <div className="relative h-6 border-b border-zinc-200 bg-zinc-50">
@@ -797,7 +797,7 @@ export function ScheduleGantt({
           return (
             <div
               key={s.staff_id}
-              className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-center gap-2 border-b border-zinc-100 py-0.5 last:border-b-0"
+              className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-center gap-2 border-b border-zinc-100 py-0 last:border-b-0"
             >
               <div className="truncate text-sm font-medium text-zinc-900">
                 {s.staff_name}
