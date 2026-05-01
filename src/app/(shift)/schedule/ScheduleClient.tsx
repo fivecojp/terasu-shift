@@ -1010,9 +1010,23 @@ export function ScheduleClient(init: Props) {
                       公開する
                     </button>
                   ) : (
-                    <div className="px-4 py-2.5 text-sm font-medium text-emerald-600">
-                      {publishLabelPc}
-                    </div>
+                    <>
+                      <div className="px-4 py-2.5 text-sm font-medium text-emerald-600">
+                        {publishLabelPc}
+                      </div>
+                      {canUnpublish ? (
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+                          onClick={() => {
+                            setMenuOpen(false)
+                            void onUnpublish()
+                          }}
+                        >
+                          公開取消
+                        </button>
+                      ) : null}
+                    </>
                   )}
                   <Link
                     href="/settings"
