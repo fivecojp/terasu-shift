@@ -402,3 +402,24 @@ export async function deleteShiftRequestAction(data: {
   revalidatePath('/request')
   return { error: null }
 }
+
+export async function upsertScheduleMemoAction(data: {
+  store_id: string
+  memo_date: string
+  memo_text: string
+}): Promise<{ error?: string }> {
+  const supabase = createServiceClient()
+  const { error } = await supabase
+    .from('schedule_memos')
+    .upsert(
+      {
+        store_id: data.store_id,
+        memo_date: data.memo_date,
+        memo_text: data.memo_text,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'store_id,memo_date' }
+    )
+  if (error) return { error: error.message }
+  return {}
+}

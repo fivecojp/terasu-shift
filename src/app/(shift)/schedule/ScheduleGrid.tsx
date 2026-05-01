@@ -9,7 +9,9 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
-import type { Shift, ShiftPattern, ShiftRequest } from '@/types/database'
+import { useRouter } from 'next/navigation'
+import { upsertScheduleMemoAction } from '@/app/(shift)/schedule/actions'
+import type { Shift, ShiftPattern, ShiftRequest, ScheduleMemo } from '@/types/database'
 import { formatShiftTimeRangeCompact } from '@/lib/jst-shift-time'
 import { minutesToShort } from '@/lib/time'
 import type { StaffRow, RequestEditTarget } from '@/app/(shift)/schedule/types'
@@ -37,6 +39,7 @@ type Props = {
   onPickCell: (workDate: string) => void
   storeId: string
   onRequestCellClick?: (target: RequestEditTarget) => void
+  memos: ScheduleMemo[]
 }
 
 const WD = ['日', '月', '火', '水', '木', '金', '土'] as const
@@ -132,6 +135,7 @@ export function ScheduleGrid({
   onPickCell,
   storeId,
   onRequestCellClick,
+  memos,
 }: Props) {
   const todayStr = new Date().toLocaleDateString('sv-SE')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -164,6 +168,17 @@ export function ScheduleGrid({
     () => [...patternsById.values()],
     [patternsById]
   )
+
+  const memoMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const memo of memos) {
+      m.set(memo.memo_date, memo.memo_text)
+    }
+    return m
+  }, [memos])
+
+  const [memoEdits, setMemoEdits] = useState<Map<string, string>>(new Map())
+  const router = useRouter()
 
   const toggleRibbon = useCallback((key: string) => {
     setOpenRibbonKey((prev) => (prev === key ? null : key))
@@ -486,6 +501,71 @@ export function ScheduleGrid({
                 })}
               </tr>
             ))}
+          </tbody>
+          <tbody>
+            <tr>
+              <td
+                className="sticky left-0 z-10 whitespace-nowrap border-b border-r border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-500 shadow-[1px_0_0_0_#e4e4e7]"
+                style={{ willChange: 'transform' }}
+              >
+                Memo
+              </td>
+              {columnDates.map((d) => {
+                const savedText = memoMap.get(d) ?? ''
+                const editText = memoEdits.get(d)
+                const displayText = editText !== undefined ? editText : savedText
+                return (
+                  <td
+                    key={`memo_${d}`}
+                    className="border-b border-r border-zinc-100 px-1 py-0.5"
+                  >
+                    {role === 'leader' ? (
+                      <input
+                        type="text"
+                        className="w-full rounded border-0 bg-transparent px-0.5 py-0.5 text-xs text-zinc-700 outline-none focus:bg-zinc-50 focus:ring-1 focus:ring-slate-300 placeholder:text-zinc-300"
+                        placeholder="…"
+                        value={displayText}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          setMemoEdits((prev) => {
+                            const next = new Map(prev)
+                            next.set(d, val)
+                            return next
+                          })
+                        }}
+                        onBlur={async () => {
+                          const editVal = memoEdits.get(d)
+                          if (editVal === undefined) return
+                          if (editVal === savedText) {
+                            setMemoEdits((prev) => {
+                              const next = new Map(prev)
+                              next.delete(d)
+                              return next
+                            })
+                            return
+                          }
+                          await upsertScheduleMemoAction({
+                            store_id: storeId,
+                            memo_date: d,
+                            memo_text: editVal,
+                          })
+                          setMemoEdits((prev) => {
+                            const next = new Map(prev)
+                            next.delete(d)
+                            return next
+                          })
+                          router.refresh()
+                        }}
+                      />
+                    ) : (
+                      <span className="block px-0.5 text-xs text-zinc-500">
+                        {savedText}
+                      </span>
+                    )}
+                  </td>
+                )
+              })}
+            </tr>
           </tbody>
         </table>
       </div>

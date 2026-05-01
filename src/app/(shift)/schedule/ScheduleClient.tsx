@@ -14,7 +14,7 @@ import {
   type ScheduleViewKind,
   type ViewSpan,
 } from '@/lib/schedule-view-range'
-import type { ShiftPattern } from '@/types/database'
+import type { ScheduleMemo, ShiftPattern } from '@/types/database'
 import { displayToMinutes, minutesToDisplay, minutesToShort } from '@/lib/time'
 import {
   buildKeyedRequests,
@@ -435,6 +435,7 @@ type Props = SchedulePageData & {
   scheduleViewKind: ScheduleViewKind
   allRequests: RequestSummary[]
   showRequestsToGeneral: boolean
+  memos: ScheduleMemo[]
 }
 
 export function ScheduleClient(init: Props) {
@@ -459,6 +460,7 @@ export function ScheduleClient(init: Props) {
     ymQuery,
     viewStartYmd,
     scheduleViewKind,
+    memos,
   } = init
 
   const [viewMode, setViewMode] = useState<'request' | 'shift'>('shift')
@@ -1048,6 +1050,7 @@ export function ScheduleClient(init: Props) {
               ? handleRequestCellClick
               : undefined
           }
+          memos={memos}
         />
 
         {requestEditTarget ? (

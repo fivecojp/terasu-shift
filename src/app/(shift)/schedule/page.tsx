@@ -19,6 +19,7 @@ import type {
   ShiftPattern,
   ShiftPublishStatus,
   ShiftRequest,
+  ScheduleMemo,
   Staff,
 } from '@/types/database'
 import { ScheduleClient } from '@/app/(shift)/schedule/ScheduleClient'
@@ -162,7 +163,7 @@ export default async function SchedulePage({
           .eq('store_id', session.store_id)
           .in('work_date', columnDates)
 
-  const [patternsRes, holidaysRes, shiftsRes, requestsRes, publishRes, allRequestsRes] =
+  const [patternsRes, holidaysRes, shiftsRes, requestsRes, publishRes, allRequestsRes, memosRes] =
     await Promise.all([
       supabase
         .from('shift_patterns')
@@ -190,6 +191,12 @@ export default async function SchedulePage({
         .lte('period_start', fetchEnd)
         .gte('period_end', fetchStart),
       allRequestsQuery,
+      supabase
+        .from('schedule_memos')
+        .select('*')
+        .eq('store_id', session.store_id)
+        .gte('memo_date', fetchStart)
+        .lte('memo_date', fetchEnd),
     ])
 
   if (shiftsRes.error) {
@@ -248,6 +255,7 @@ export default async function SchedulePage({
       ymQuery={ymQuery}
       viewStartYmd={startStr}
       scheduleViewKind={scheduleViewKind}
+      memos={(memosRes.data ?? []) as ScheduleMemo[]}
     />
   )
 }

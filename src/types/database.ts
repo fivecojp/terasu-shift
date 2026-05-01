@@ -81,3 +81,11 @@ export type Shift = {
   shift_change_mark: boolean
   shift_pattern_id: string | null // 追加カラム
 }
+
+export type ScheduleMemo = {
+  memo_id: string
+  store_id: string
+  memo_date: string // 'YYYY-MM-DD'
+  memo_text: string
+  updated_at: string
+}
