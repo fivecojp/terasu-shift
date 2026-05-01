@@ -723,7 +723,7 @@ export function ScheduleGantt({
       </div>
       <div className="px-4 pt-0 pb-0">
         <div className="grid grid-cols-[minmax(140px,180px),minmax(0,1fr)] items-end gap-2">
-          <div aria-hidden className="min-h-6" />
+          <div aria-hidden className="min-h-0" />
           <div className="relative h-6 border-b border-zinc-200 bg-zinc-50">
             {hourTicks.map((tick) => (
               <span
